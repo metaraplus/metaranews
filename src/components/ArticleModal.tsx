@@ -301,25 +301,20 @@ export default function ArticleModal({
                 <label className="text-xs font-semibold text-slate-700 block">
                   Dokumentasi <span className="text-slate-400 font-normal">(Opsional)</span>
                 </label>
-                <select
+                <input
+                  type="text"
                   value={documenter}
                   onChange={(e) => setDocumenter(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:border-sky-600 focus:ring-1 focus:ring-sky-600 transition-all text-slate-900 font-medium"
+                  placeholder="Nama fotografer, kru, atau 'Tidak ada / Admin'..."
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:border-sky-600 focus:ring-1 focus:ring-sky-600 transition-all text-slate-900 font-medium"
                   id="input-article-documenter"
-                >
-                  <option value="Tidak ada / Admin">Tidak ada / Admin Redaksi</option>
-                  {journalists.map((j) => (
-                    <option key={j.id} value={j.name}>
-                      {j.name} ({j.role})
-                    </option>
-                  ))}
-                </select>
+                />
                 <p className="text-[10px] text-slate-400">Mengambil foto/video liputan.</p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+          <div className="border-t border-slate-100 pt-4">
             {/* Status selection */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700 block">
@@ -347,21 +342,6 @@ export default function ArticleModal({
                   <span>Draft Pendukung</span>
                 </label>
               </div>
-            </div>
-
-            {/* Estimated Views */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700 block">
-                Jumlah Kunjungan / Pembaca <span className="text-slate-400 font-normal">(Statistik)</span>
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={views}
-                onChange={(e) => setViews(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:border-sky-600 focus:ring-1 focus:ring-sky-600 transition-all text-slate-900 font-medium"
-                id="input-article-views"
-              />
             </div>
           </div>
         </form>
