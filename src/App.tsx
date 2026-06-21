@@ -113,24 +113,19 @@ export default function App() {
       try {
         setIsLoading(true);
         
-        // Fetch journalists
-        const jSnap = await getDocs(collection(db, 'journalists'));
-        if (fallbackTriggered) return;
-        let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
-        
-        // Fetch categories
-        const cSnap = await getDocs(collection(db, 'categories'));
-        if (fallbackTriggered) return;
-        let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
-        
-        // Fetch articles
-        const aSnap = await getDocs(collection(db, 'articles'));
-        if (fallbackTriggered) return;
-        let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
+        // Fetch collections in parallel to prevent network waterfall delays
+        const [jSnap, cSnap, aSnap, pSnap] = await Promise.all([
+          getDocs(collection(db, 'journalists')),
+          getDocs(collection(db, 'categories')),
+          getDocs(collection(db, 'articles')),
+          getDocs(collection(db, 'personnels'))
+        ]);
 
-        // Fetch personnels
-        const pSnap = await getDocs(collection(db, 'personnels'));
         if (fallbackTriggered) return;
+
+        let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
+        let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
+        let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
         let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
 
         // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
