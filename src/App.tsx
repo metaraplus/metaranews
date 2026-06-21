@@ -734,42 +734,44 @@ export default function App() {
           {/* TESTING PRESETS HELPER */}
           <div className="border-t border-slate-100 pt-4 space-y-2">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">PRESET INSTAN UNTUK PENGUJI (TESTER):</span>
-            <div className="grid grid-cols-1 gap-1.5 text-[11px] leading-tight text-slate-600 font-medium font-sans">
-              <button 
-                type="button"
-                onClick={() => { setLoginUsername('admin'); setLoginPassword('admin123'); }}
-                className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-150 transition-all flex justify-between items-center cursor-pointer"
-              >
-                <div>
-                  <strong className="text-slate-750 block font-bold">🧙‍♂️ Akun Admin (Full Akses)</strong>
-                  <span className="text-[10px] text-slate-400 font-mono">user: <strong>admin</strong> | pass: <strong>admin123</strong></span>
-                </div>
-                <span className="text-[9px] bg-red-105 text-red-700 bg-red-50 font-extrabold px-1.5 py-0.5 rounded uppercase border border-red-200 shadow-2xs">Admin</span>
-              </button>
+            <div className="grid grid-cols-1 gap-1.5 text-[11px] leading-tight text-slate-600 font-medium font-sans max-h-60 overflow-y-auto pr-1">
+              {personnels.map((p) => {
+                const getRoleColor = (role: string) => {
+                  if (role === 'Admin') return 'bg-red-50 text-red-700 border-red-200';
+                  if (role === 'Manager') return 'bg-amber-50 text-amber-700 border-amber-200';
+                  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                };
+                const getRoleEmoji = (role: string) => {
+                  if (role === 'Admin') return '🧙‍♂️';
+                  if (role === 'Manager') return '🕵️‍♂️';
+                  return '✍️';
+                };
 
-              <button 
-                type="button"
-                onClick={() => { setLoginUsername('manager'); setLoginPassword('manager123'); }}
-                className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-150 transition-all flex justify-between items-center cursor-pointer"
-              >
-                <div>
-                  <strong className="text-slate-755 block font-bold">🕵️‍♂️ Akun Manager (Editor)</strong>
-                  <span className="text-[10px] text-slate-400 font-mono">user: <strong>manager</strong> | pass: <strong>manager123</strong></span>
-                </div>
-                <span className="text-[9px] bg-amber-105 text-amber-700 bg-amber-50 font-extrabold px-1.5 py-0.5 rounded uppercase border border-amber-200 shadow-2xs">Manager</span>
-              </button>
-
-              <button 
-                type="button"
-                onClick={() => { setLoginUsername('staff'); setLoginPassword('staff123'); }}
-                className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-155 transition-all flex justify-between items-center cursor-pointer"
-              >
-                <div>
-                  <strong className="text-slate-755 block font-bold">✍️ Akun Staff (Reporter)</strong>
-                  <span className="text-[10px] text-slate-400 font-mono">user: <strong>staff</strong> | pass: <strong>staff123</strong></span>
-                </div>
-                <span className="text-[9px] bg-emerald-105 text-emerald-700 bg-emerald-50 font-extrabold px-1.5 py-0.5 rounded uppercase border border-emerald-200 shadow-2xs">Staff</span>
-              </button>
+                return (
+                  <button 
+                    key={p.id}
+                    type="button"
+                    onClick={() => { 
+                      setLoginUsername(p.username); 
+                      setLoginPassword(p.password || ''); 
+                    }}
+                    className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-150 transition-all flex justify-between items-center cursor-pointer group"
+                    title={`Klik untuk otomatis mengisi kredensial ${p.fullName}`}
+                  >
+                    <div>
+                      <strong className="text-slate-750 block font-bold group-hover:text-sky-600 transition-colors">
+                        {getRoleEmoji(p.role)} {p.fullName}
+                      </strong>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        username: <strong className="text-slate-605">@{p.username}</strong>
+                      </span>
+                    </div>
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase border shadow-2xs ${getRoleColor(p.role)}`}>
+                      {p.role}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
