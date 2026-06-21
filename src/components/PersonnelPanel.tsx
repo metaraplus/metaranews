@@ -43,6 +43,7 @@ export default function PersonnelPanel({
   const [editRole, setEditRole] = useState<Personnel['role']>('Staff');
   const [showEditPassword, setShowEditPassword] = useState<Record<string, boolean>>({});
   const [editError, setEditError] = useState('');
+  const [editSuccessId, setEditSuccessId] = useState<string | null>(null);
 
   // Handle personnel registration
   const handleSubmit = async (e: React.FormEvent) => {
@@ -128,6 +129,8 @@ export default function PersonnelPanel({
         role: editRole
       });
       setEditingId(null);
+      setEditSuccessId(id);
+      setTimeout(() => setEditSuccessId(null), 3000);
     } catch (err: any) {
       setEditError(err.message || 'Gagal memperbarui data.');
     } finally {
@@ -401,6 +404,11 @@ export default function PersonnelPanel({
                           {isCurrent && (
                             <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-150 border border-sky-305 text-sky-800 font-black tracking-tight leading-none">
                               AKTIF SEKARANG
+                            </span>
+                          )}
+                          {editSuccessId === p.id && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-250 text-emerald-850 font-black flex items-center gap-1 leading-none animate-pulse">
+                              <CheckCircle className="w-2.5 h-2.5 text-emerald-600" /> TERUPDATE!
                             </span>
                           )}
                         </div>

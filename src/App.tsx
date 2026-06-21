@@ -131,29 +131,33 @@ export default function App() {
         if (fallbackTriggered) return;
         let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
 
-        // --- SEED DATABASE IF COMPLETELY EMPTY ---
-        if (jList.length === 0 && cList.length === 0 && aList.length === 0) {
-          console.log("Firestore empty. Seeding initial data to Firebase...");
-          
-          // Seed journalists
+        // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
+        if (jList.length === 0) {
+          console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
           for (const j of INITIAL_JOURNALISTS) {
             await setDoc(doc(db, 'journalists', j.id), j);
           }
           jList = INITIAL_JOURNALISTS;
+        }
 
-          // Seed categories
+        if (cList.length === 0) {
+          console.log("Seeding INITIAL_CATEGORIES to Firebase...");
           for (const c of INITIAL_CATEGORIES) {
             await setDoc(doc(db, 'categories', c.id), c);
           }
           cList = INITIAL_CATEGORIES;
+        }
 
-          // Seed articles
+        if (aList.length === 0) {
+          console.log("Seeding INITIAL_ARTICLES to Firebase...");
           for (const a of INITIAL_ARTICLES) {
             await setDoc(doc(db, 'articles', a.id), a);
           }
           aList = INITIAL_ARTICLES;
+        }
 
-          // Seed default personnel
+        if (pList.length === 0) {
+          console.log("Seeding default personnels to Firebase...");
           const defaultPersonnels: Personnel[] = [
             { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
             { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
@@ -477,16 +481,30 @@ export default function App() {
 
   const handleUpdatePersonnel = async (id: string, updated: Partial<Personnel>) => {
     try {
-      const updatedPersonnels = personnels.map(p => p.id === id ? { ...p, ...updated } as Personnel : p);
-      setPersonnels(updatedPersonnels);
-      localStorage.setItem('metaranews_personnels', JSON.stringify(updatedPersonnels));
-      
-      const target = updatedPersonnels.find(p => p.id === id);
-      if (target) {
+      setPersonnels(prev => {
+        const exists = prev.some(p => p.id === id);
+        let updatedList: Personnel[];
+        if (exists) {
+          updatedList = prev.map(p => p.id === id ? { ...p, ...updated } as Personnel : p);
+        } else {
+          const base: Personnel = (currentUser && currentUser.id === id)
+            ? currentUser
+            : { id, username: '', password: '', fullName: '', role: 'Staff' };
+          const newItem = { ...base, ...updated } as Personnel;
+          updatedList = [...prev, newItem];
+        }
+        localStorage.setItem('metaranews_personnels', JSON.stringify(updatedList));
+        return updatedList;
+      });
+
+      // Directly sync target state from local storage write to avoid state closure delay
+      const localUpdatedList = JSON.parse(localStorage.getItem('metaranews_personnels') || '[]');
+      const targetDoc = localUpdatedList.find((p: Personnel) => p.id === id);
+      if (targetDoc) {
         try {
-          await setDoc(doc(db, 'personnels', id), target);
+          await setDoc(doc(db, 'personnels', id), targetDoc);
         } catch (dbErr) {
-          console.warn("Gagal memutasi personil di Firestore, tersimpan lokal:", dbErr);
+          console.warn("Gagal memutasi personil di Firestore, disimpan lokal:", dbErr);
         }
       }
 
@@ -497,6 +515,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Gagal memperbarui personil:", err);
+      throw err;
     }
   };
 
