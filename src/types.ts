@@ -39,3 +39,33 @@ export interface Personnel {
   journalistId?: string;
 }
 
+export interface QuotationItem {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  price: number;
+}
+
+export interface Quotation {
+  id: string;
+  letterNumber: string;
+  date: string;
+  attachments: string;
+  subject: string;
+  recipientName: string;
+  recipientTitle: string;
+  recipientCompany: string;
+  recipientAddress: string;
+  bodyOpening: string;
+  items: QuotationItem[];
+  bodyClosing: string;
+  signerName: string;
+  signerTitle: string;
+  vatPercent: number;
+  showVat: boolean;
+  createdAt?: string;
+}
+
+

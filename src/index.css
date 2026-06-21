@@ -1,1 +1,35 @@
 @import "tailwindcss";
+
+@layer utilities {
+  @media print {
+    /* Hide all elements that are not part of the printed document */
+    body * {
+      visibility: hidden;
+    }
+    #print-section, #print-section * {
+      visibility: visible;
+    }
+    #print-section {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100% !important;
+      height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: white !important;
+    }
+    /* Force page dimensions for A4 */
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    /* Exclude elements not meant to print inside print-section */
+    .no-print-element {
+      display: none !important;
+    }
+  }
+}
+
