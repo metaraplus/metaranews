@@ -28,3 +28,13 @@ export interface Category {
   name: string;
   color: string; // Tailwind tint variant, e.g., "indigo"
 }
+
+export interface Personnel {
+  id: string;
+  username: string;
+  password?: string;
+  role: 'Admin' | 'Manager' | 'Staff';
+  fullName: string;
+  journalistId?: string;
+}
+

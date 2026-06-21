@@ -14,6 +14,7 @@ interface ArticleListProps {
   selectedMonth: string;
   onEditArticle: (article: Article) => void;
   onDeleteArticle: (id: string) => void;
+  currentUserRole?: 'Admin' | 'Manager' | 'Staff';
 }
 
 export default function ArticleList({
@@ -22,7 +23,8 @@ export default function ArticleList({
   journalists,
   selectedMonth,
   onEditArticle,
-  onDeleteArticle
+  onDeleteArticle,
+  currentUserRole = 'Staff'
 }: ArticleListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCat, setSelectedCat] = useState('all');
@@ -325,14 +327,23 @@ export default function ArticleList({
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => triggerDelete(article.id, article.title)}
-                          className="p-1 rounded-md text-slate-400 hover:text-red-650 hover:bg-red-50 transition-colors"
-                          title="Hapus Berita"
-                          id={`del-btn-${article.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {currentUserRole !== 'Staff' ? (
+                          <button
+                            onClick={() => triggerDelete(article.id, article.title)}
+                            className="p-1 rounded-md text-slate-400 hover:text-red-650 hover:bg-red-50 transition-colors"
+                            title="Hapus Berita"
+                            id={`del-btn-${article.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <span
+                            className="p-1 rounded-md text-slate-200 cursor-not-allowed"
+                            title="Akses terbatas: Staff tidak berhak menghapus berita"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </span>
+                        )}
                       </div>
                     </td>
                   </tr>

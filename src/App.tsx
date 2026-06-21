@@ -10,11 +10,13 @@ import {
   INITIAL_CATEGORIES, 
   MONTHS 
 } from './data';
-import { Article, Journalist, Category } from './types';
+import { Article, Journalist, Category, Personnel } from './types';
 import JournalistChart from './components/JournalistChart';
 import ArticleList from './components/ArticleList';
 import ArticleModal from './components/ArticleModal';
 import ManagementPanel from './components/ManagementPanel';
+import PersonnelPanel from './components/PersonnelPanel';
+import { db, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from './firebase';
 import { 
   LayoutDashboard, 
   Newspaper, 
@@ -28,44 +30,131 @@ import {
   Layers, 
   Users, 
   Sparkles,
-  Download
+  Download,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function App() {
-  // --- Persistent State Initialization ---
-  const [articles, setArticles] = useState<Article[]>(() => {
-    const local = localStorage.getItem('metaranews_articles');
-    return local ? JSON.parse(local) : INITIAL_ARTICLES;
+  // --- Firebase Loading State & Synchronized States ---
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [journalists, setJournalists] = useState<Journalist[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [personnels, setPersonnels] = useState<Personnel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // --- Login / Profile Session State ---
+  const [currentUser, setCurrentUser] = useState<Personnel | null>(() => {
+    const saved = localStorage.getItem('metaranews_current_user');
+    return saved ? JSON.parse(saved) : null;
   });
 
-  const [journalists, setJournalists] = useState<Journalist[]>(() => {
-    const local = localStorage.getItem('metaranews_journalists');
-    return local ? JSON.parse(local) : INITIAL_JOURNALISTS;
-  });
+  // --- Login Form State ---
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const local = localStorage.getItem('metaranews_categories');
-    return local ? JSON.parse(local) : INITIAL_CATEGORIES;
-  });
-
-  // --- Active State ---
+  // --- Active Tab State ---
   const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
-  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem'>('laporan');
+  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
-  // Sync to local storage
+  // Fetch all collections from Firestore on mount
   useEffect(() => {
-    localStorage.setItem('metaranews_articles', JSON.stringify(articles));
-  }, [articles]);
+    let active = true;
+    
+    async function loadData() {
+      try {
+        setIsLoading(true);
+        
+        // Fetch journalists
+        const jSnap = await getDocs(collection(db, 'journalists'));
+        let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
+        
+        // Fetch categories
+        const cSnap = await getDocs(collection(db, 'categories'));
+        let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
+        
+        // Fetch articles
+        const aSnap = await getDocs(collection(db, 'articles'));
+        let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
 
-  useEffect(() => {
-    localStorage.setItem('metaranews_journalists', JSON.stringify(journalists));
-  }, [journalists]);
+        // Fetch personnels
+        const pSnap = await getDocs(collection(db, 'personnels'));
+        let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
 
+        // --- SEED DATABASE IF COMPLETELY EMPTY ---
+        if (jList.length === 0 && cList.length === 0 && aList.length === 0) {
+          console.log("Firestore empty. Seeding initial data to Firebase...");
+          
+          // Seed journalists
+          for (const j of INITIAL_JOURNALISTS) {
+            await setDoc(doc(db, 'journalists', j.id), j);
+          }
+          jList = INITIAL_JOURNALISTS;
+
+          // Seed categories
+          for (const c of INITIAL_CATEGORIES) {
+            await setDoc(doc(db, 'categories', c.id), c);
+          }
+          cList = INITIAL_CATEGORIES;
+
+          // Seed articles
+          for (const a of INITIAL_ARTICLES) {
+            await setDoc(doc(db, 'articles', a.id), a);
+          }
+          aList = INITIAL_ARTICLES;
+
+          // Seed default personnel
+          const defaultPersonnels: Personnel[] = [
+            { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+            { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+            { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+          ];
+          for (const p of defaultPersonnels) {
+            await setDoc(doc(db, 'personnels', p.id), p);
+          }
+          pList = defaultPersonnels;
+        }
+
+        if (active) {
+          setJournalists(jList);
+          setCategories(cList);
+          setArticles(aList);
+          setPersonnels(pList);
+        }
+      } catch (err) {
+        console.error("Gagal memuat data dari Firebase Firestore:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+    
+    loadData();
+    
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Enforce access rights tab limits
   useEffect(() => {
-    localStorage.setItem('metaranews_categories', JSON.stringify(categories));
-  }, [categories]);
+    if (!currentUser) return;
+    
+    // Staff cannot view 'sistem' or 'personil' tabs
+    if (currentUser.role === 'Staff' && (activeTab === 'sistem' || activeTab === 'personil')) {
+      setActiveTab('laporan');
+    }
+    // Manager cannot view 'personil' tab
+    if (currentUser.role === 'Manager' && activeTab === 'personil') {
+      setActiveTab('laporan');
+    }
+  }, [currentUser, activeTab]);
 
   // --- Calculations for Selected Month ---
   const filteredArticles = useMemo(() => {
@@ -95,23 +184,35 @@ export default function App() {
   }, [filteredArticles]);
 
   // --- Actions ---
-  const handleSaveArticle = (articleData: Omit<Article, 'id'> & { id?: string }) => {
-    if (articleData.id) {
-      // Edit mode
-      setArticles(prev => prev.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art));
-    } else {
-      // Add mode
-      const newArticle: Article = {
-        ...articleData,
-        id: `a-${Date.now()}`
-      } as Article;
-      setArticles(prev => [newArticle, ...prev]);
+  const handleSaveArticle = async (articleData: Omit<Article, 'id'> & { id?: string }) => {
+    try {
+      if (articleData.id) {
+        // Edit mode
+        setArticles(prev => prev.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art));
+        await setDoc(doc(db, 'articles', articleData.id), { ...articleData } as Article);
+      } else {
+        // Add mode
+        const newId = `a-${Date.now()}`;
+        const newArticle: Article = {
+          ...articleData,
+          id: newId
+        } as Article;
+        setArticles(prev => [newArticle, ...prev]);
+        await setDoc(doc(db, 'articles', newId), newArticle);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan artikel ke Firestore:", err);
     }
     setEditingArticle(null);
   };
 
-  const handleDeleteArticle = (id: string) => {
-    setArticles(prev => prev.filter(a => a.id !== id));
+  const handleDeleteArticle = async (id: string) => {
+    try {
+      setArticles(prev => prev.filter(a => a.id !== id));
+      await deleteDoc(doc(db, 'articles', id));
+    } catch (err) {
+      console.error("Gagal menghapus artikel dari Firestore:", err);
+    }
   };
 
   const handleEditArticleTrigger = (article: Article) => {
@@ -120,52 +221,161 @@ export default function App() {
   };
 
   // Add a new journalist to roster
-  const handleAddJournalist = (name: string, role: Journalist['role']) => {
-    const newJurn: Journalist = {
-      id: `j-${Date.now()}`,
-      name,
-      role
-    };
-    setJournalists(prev => [...prev, newJurn]);
+  const handleAddJournalist = async (name: string, role: Journalist['role']) => {
+    try {
+      const newJurn: Journalist = {
+        id: `j-${Date.now()}`,
+        name,
+        role
+      };
+      setJournalists(prev => [...prev, newJurn]);
+      await setDoc(doc(db, 'journalists', newJurn.id), newJurn);
+    } catch (err) {
+      console.error("Gagal menyimpan jurnalis ke Firestore:", err);
+    }
   };
 
-  const handleDeleteJournalist = (id: string) => {
-    setJournalists(prev => prev.filter(j => j.id !== id));
+  const handleDeleteJournalist = async (id: string) => {
+    try {
+      setJournalists(prev => prev.filter(j => j.id !== id));
+      await deleteDoc(doc(db, 'journalists', id));
+    } catch (err) {
+      console.error("Gagal menghapus jurnalis dari Firestore:", err);
+    }
   };
 
-  const handleEditJournalist = (id: string, name: string, role: Journalist['role']) => {
-    const oldJurn = journalists.find(j => j.id === id);
-    const oldName = oldJurn ? oldJurn.name : '';
+  const handleEditJournalist = async (id: string, name: string, role: Journalist['role']) => {
+    try {
+      const oldJurn = journalists.find(j => j.id === id);
+      const oldName = oldJurn ? oldJurn.name : '';
 
-    setJournalists(prev => prev.map(j => j.id === id ? { ...j, name, role } : j));
+      setJournalists(prev => prev.map(j => j.id === id ? { ...j, name, role } : j));
+      await setDoc(doc(db, 'journalists', id), { id, name, role });
 
-    if (oldName && oldName !== name) {
-      setArticles(prev => prev.map(art => {
-        const updated = { ...art };
-        if (updated.reporter === oldName) updated.reporter = name;
-        if (updated.writer === oldName) updated.writer = name;
-        if (updated.documenter === oldName) updated.documenter = name;
-        return updated;
-      }));
+      if (oldName && oldName !== name) {
+        const updatedArticles = articles.map(art => {
+          const updated = { ...art };
+          let changed = false;
+          if (updated.reporter === oldName) { updated.reporter = name; changed = true; }
+          if (updated.writer === oldName) { updated.writer = name; changed = true; }
+          if (updated.documenter === oldName) { updated.documenter = name; changed = true; }
+          return { updated, changed };
+        });
+
+        setArticles(prev => prev.map((art, index) => updatedArticles[index].changed ? updatedArticles[index].updated : art));
+
+        // Sync renamed references in Firestore
+        for (const item of updatedArticles) {
+          if (item.changed) {
+            await setDoc(doc(db, 'articles', item.updated.id), item.updated);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memperbarui jurnalis di Firestore:", err);
     }
   };
 
   // Add a new news category
-  const handleAddCategory = (name: string, color: string) => {
-    const newCat: Category = {
-      id: name.trim().toLowerCase().replace(/\s+/g, '-'),
-      name,
-      color
+  const handleAddCategory = async (name: string, color: string) => {
+    try {
+      const newCat: Category = {
+        id: name.trim().toLowerCase().replace(/\s+/g, '-'),
+        name,
+        color
+      };
+      setCategories(prev => [...prev, newCat]);
+      await setDoc(doc(db, 'categories', newCat.id), newCat);
+    } catch (err) {
+      console.error("Gagal menyimpan kategori ke Firestore:", err);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      setCategories(prev => prev.filter(c => c.id !== id));
+      await deleteDoc(doc(db, 'categories', id));
+    } catch (err) {
+      console.error("Gagal menghapus kategori dari Firestore:", err);
+    }
+  };
+
+  const handleEditCategory = async (id: string, name: string, color: string) => {
+    try {
+      const updatedCat = { id, name, color };
+      setCategories(prev => prev.map(c => c.id === id ? updatedCat : c));
+      await setDoc(doc(db, 'categories', id), updatedCat);
+    } catch (err) {
+      console.error("Gagal memperbarui kategori di Firestore:", err);
+    }
+  };
+
+  // --- Personnel Credentials Operations ---
+  const handleAddPersonnel = async (fullName: string, username: string, password: string, role: Personnel['role'], jId?: string) => {
+    const newPers: Personnel = {
+      id: `p-${Date.now()}`,
+      username,
+      password,
+      role,
+      fullName,
+      journalistId: jId
     };
-    setCategories(prev => [...prev, newCat]);
+    setPersonnels(prev => [...prev, newPers]);
+    await setDoc(doc(db, 'personnels', newPers.id), newPers);
   };
 
-  const handleDeleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(c => c.id !== id));
+  const handleUpdatePersonnel = async (id: string, updated: Partial<Personnel>) => {
+    const updatedPersonnels = personnels.map(p => p.id === id ? { ...p, ...updated } as Personnel : p);
+    setPersonnels(updatedPersonnels);
+    
+    const target = updatedPersonnels.find(p => p.id === id);
+    if (target) {
+      await setDoc(doc(db, 'personnels', id), target);
+    }
+
+    if (currentUser && currentUser.id === id) {
+      const refreshed = { ...currentUser, ...updated } as Personnel;
+      setCurrentUser(refreshed);
+      localStorage.setItem('metaranews_current_user', JSON.stringify(refreshed));
+    }
   };
 
-  const handleEditCategory = (id: string, name: string, color: string) => {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, name, color } : c));
+  const handleDeletePersonnel = async (id: string) => {
+    setPersonnels(prev => prev.filter(p => p.id !== id));
+    await deleteDoc(doc(db, 'personnels', id));
+  };
+
+  // --- Dynamic Authentication Handlers ---
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    if (!loginUsername.trim()) {
+      setLoginError('Username tidak boleh kosong.');
+      return;
+    }
+    if (!loginPassword.trim()) {
+      setLoginError('Password tidak boleh kosong.');
+      return;
+    }
+
+    const found = personnels.find(
+      p => p.username.toLowerCase() === loginUsername.trim().toLowerCase() && p.password === loginPassword
+    );
+
+    if (found) {
+      setCurrentUser(found);
+      localStorage.setItem('metaranews_current_user', JSON.stringify(found));
+      setLoginUsername('');
+      setLoginPassword('');
+    } else {
+      setLoginError('Username atau password salah.');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('metaranews_current_user');
+    setActiveTab('laporan');
   };
 
   // Helper for Month labels formatting
@@ -205,6 +415,133 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 animate-pulse" id="loading-spinner">
+        <div className="flex flex-col items-center gap-4 bg-white p-8 rounded-2xl border border-slate-100 shadow-xl max-w-sm w-full text-center">
+          <div className="w-10 h-10 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></div>
+          <div>
+            <h3 className="font-bold text-slate-800 text-sm">Menghubungkan ke Firebase...</h3>
+            <p className="text-[11px] text-slate-400 mt-1">Mengunduh data performa jurnalistik dan sinkronisasi hak masuk real-time.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8" id="login-layout">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-sky-500/20 animate-bounce">
+            M
+          </div>
+          <div>
+            <span className="font-extrabold text-slate-900 text-lg tracking-tight block leading-none">metaranews<strong className="text-sky-600">.co</strong></span>
+            <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest block mt-0.5">Sistem Ruang Redaksi & Hak Akses</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-xl max-w-md w-full space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-sky-600" />
+              Sign In Akun Redaksi
+            </h2>
+            <p className="text-[11px] text-slate-500 font-medium">Masuk untuk mengelola slip berita, rubrik dan personil.</p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Username</label>
+              <input
+                type="text"
+                placeholder="Masukkan username Anda..."
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:ring-1 focus:ring-sky-505 text-slate-850 font-semibold"
+                id="login-username"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  placeholder="Masukkan password Anda..."
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:ring-1 focus:ring-sky-505 text-slate-855 font-mono"
+                  id="login-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showLoginPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {loginError && <p className="text-xs text-red-600 font-bold mt-1">{loginError}</p>}
+
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center font-semibold"
+              id="login-btn-submit"
+            >
+              Sign In Sekarang
+            </button>
+          </form>
+
+          {/* TESTING PRESETS HELPER */}
+          <div className="border-t border-slate-100 pt-4 space-y-2">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">PRESET INSTAN UNTUK PENGUJI (TESTER):</span>
+            <div className="grid grid-cols-1 gap-1.5 text-[11px] leading-tight text-slate-600 font-medium font-sans">
+              <button 
+                type="button"
+                onClick={() => { setLoginUsername('admin'); setLoginPassword('admin123'); }}
+                className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-150 transition-all flex justify-between items-center cursor-pointer"
+              >
+                <div>
+                  <strong className="text-slate-750 block font-bold">🧙‍♂️ Akun Admin (Full Akses)</strong>
+                  <span className="text-[10px] text-slate-400 font-mono">user: <strong>admin</strong> | pass: <strong>admin123</strong></span>
+                </div>
+                <span className="text-[9px] bg-red-105 text-red-700 bg-red-50 font-extrabold px-1.5 py-0.5 rounded uppercase border border-red-200 shadow-2xs">Admin</span>
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => { setLoginUsername('manager'); setLoginPassword('manager123'); }}
+                className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-150 transition-all flex justify-between items-center cursor-pointer"
+              >
+                <div>
+                  <strong className="text-slate-755 block font-bold">🕵️‍♂️ Akun Manager (Editor)</strong>
+                  <span className="text-[10px] text-slate-400 font-mono">user: <strong>manager</strong> | pass: <strong>manager123</strong></span>
+                </div>
+                <span className="text-[9px] bg-amber-105 text-amber-700 bg-amber-50 font-extrabold px-1.5 py-0.5 rounded uppercase border border-amber-200 shadow-2xs">Manager</span>
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => { setLoginUsername('staff'); setLoginPassword('staff123'); }}
+                className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-155 transition-all flex justify-between items-center cursor-pointer"
+              >
+                <div>
+                  <strong className="text-slate-755 block font-bold">✍️ Akun Staff (Reporter)</strong>
+                  <span className="text-[10px] text-slate-400 font-mono">user: <strong>staff</strong> | pass: <strong>staff123</strong></span>
+                </div>
+                <span className="text-[9px] bg-emerald-105 text-emerald-700 bg-emerald-50 font-extrabold px-1.5 py-0.5 rounded uppercase border border-emerald-200 shadow-2xs">Staff</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans flex flex-col justify-between" id="applet-viewport">
       {/* --- UPPER DECK: NAVIGATION MASTHEAD --- */}
@@ -227,13 +564,25 @@ export default function App() {
             </div>
 
             {/* Quick Profile context info */}
-            <div className="hidden sm:flex items-center gap-3 border-l border-slate-150 pl-4 py-1">
-              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200 select-none">
-                RD
+            <div className="flex items-center gap-3 border-l border-slate-150 pl-4 py-1">
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-extrabold text-xs border border-slate-200 select-none">
+                {currentUser.fullName ? currentUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'US'}
               </div>
               <div className="text-left">
-                <div className="text-xs font-semibold text-slate-850">Redaktur Pelaksana</div>
-                <div className="text-[9px] text-slate-400 font-bold">metaranews.co</div>
+                <div className="text-xs font-bold text-slate-850 leading-tight">{currentUser.fullName}</div>
+                <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 mt-0.5">
+                  <span className={`px-1.5 py-0.2 rounded-sm text-[8px] font-black uppercase ${
+                    currentUser.role === 'Admin' ? 'bg-red-50 text-red-650 border border-red-200' :
+                    currentUser.role === 'Manager' ? 'bg-amber-50 text-amber-650 border border-amber-200' :
+                    'bg-emerald-50 text-emerald-650 border border-emerald-200'
+                  }`}>{currentUser.role}</span>
+                  <button 
+                    onClick={handleLogout}
+                    className="text-[10px] text-red-500 hover:text-red-700 font-extrabold ml-1.5 cursor-pointer underline hover:no-underline"
+                  >
+                    Logout
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -333,18 +682,38 @@ export default function App() {
                 <Newspaper className="w-4 h-4" />
                 Semua Daftar Berita ({articles.length})
               </button>
-              <button
-                onClick={() => setActiveTab('sistem')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  activeTab === 'sistem'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
-                id="tab-sistem-btn"
-              >
-                <Settings className="w-4 h-4" />
-                Kru Jurnalis & Rubrik
-              </button>
+              
+              {/* Only Admin and Manager can see Wartawan & Rubrics settings */}
+              {currentUser.role !== 'Staff' && (
+                <button
+                  onClick={() => setActiveTab('sistem')}
+                  className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                    activeTab === 'sistem'
+                      ? 'border-sky-600 text-sky-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                  }`}
+                  id="tab-sistem-btn"
+                >
+                  <Settings className="w-4 h-4" />
+                  Kru Jurnalis & Rubrik
+                </button>
+              )}
+
+              {/* Only Admin can manage Personnel credentials */}
+              {currentUser.role === 'Admin' && (
+                <button
+                  onClick={() => setActiveTab('personil')}
+                  className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                    activeTab === 'personil'
+                      ? 'border-sky-600 text-sky-600'
+                      : 'border-transparent text-slate-500 hover:text-slate-805 hover:border-slate-300'
+                  }`}
+                  id="tab-personil-btn"
+                >
+                  <Lock className="w-4 h-4" />
+                  Manajemen Personil & Hak Akses
+                </button>
+              )}
             </nav>
           </div>
 
@@ -570,6 +939,7 @@ export default function App() {
                 selectedMonth={selectedMonth}
                 onEditArticle={handleEditArticleTrigger}
                 onDeleteArticle={handleDeleteArticle}
+                currentUserRole={currentUser.role}
               />
             </div>
           )}
@@ -596,6 +966,30 @@ export default function App() {
                 onAddCategory={handleAddCategory}
                 onDeleteCategory={handleDeleteCategory}
                 onEditCategory={handleEditCategory}
+              />
+            </div>
+          )}
+
+          {/* --- TAB CONTENT 4: MANAJEMEN PERSONIL & HAK AKSES --- */}
+          {activeTab === 'personil' && (
+            <div className="space-y-6 animate-in fade-in duration-200" id="personil-tab-view">
+              <div>
+                <h3 className="font-bold text-slate-900 text-md flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-sky-600" />
+                  Manajemen Personil & Hak Akses (Credentials)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Daftarkan login kru, kelola nama lengkap, ubah password, dan tetapkan tingkatan akses (Admin/Manager/Staff) yang tersimpan secara real-time di Cloud Firestore.
+                </p>
+              </div>
+
+              <PersonnelPanel
+                personnels={personnels}
+                journalists={journalists}
+                onAddPersonnel={handleAddPersonnel}
+                onUpdatePersonnel={handleUpdatePersonnel}
+                onDeletePersonnel={handleDeletePersonnel}
+                currentUserId={currentUser.id}
               />
             </div>
           )}
