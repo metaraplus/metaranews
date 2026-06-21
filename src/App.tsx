@@ -131,25 +131,25 @@ export default function App() {
         // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
         if (jList.length === 0) {
           console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
-          for (const j of INITIAL_JOURNALISTS) {
-            await setDoc(doc(db, 'journalists', j.id), j);
-          }
+          await Promise.all(
+            INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
+          );
           jList = INITIAL_JOURNALISTS;
         }
 
         if (cList.length === 0) {
           console.log("Seeding INITIAL_CATEGORIES to Firebase...");
-          for (const c of INITIAL_CATEGORIES) {
-            await setDoc(doc(db, 'categories', c.id), c);
-          }
+          await Promise.all(
+            INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
+          );
           cList = INITIAL_CATEGORIES;
         }
 
         if (aList.length === 0) {
           console.log("Seeding INITIAL_ARTICLES to Firebase...");
-          for (const a of INITIAL_ARTICLES) {
-            await setDoc(doc(db, 'articles', a.id), a);
-          }
+          await Promise.all(
+            INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
+          );
           aList = INITIAL_ARTICLES;
         }
 
@@ -160,9 +160,9 @@ export default function App() {
             { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
             { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
           ];
-          for (const p of defaultPersonnels) {
-            await setDoc(doc(db, 'personnels', p.id), p);
-          }
+          await Promise.all(
+            defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
+          );
           pList = defaultPersonnels;
         }
 

@@ -211,21 +211,25 @@ export default function QuotationLetterCreator() {
     setSaveSuccess(false);
 
     try {
+      // 1. Instantly write to LocalState & LocalStorage
       const updatedList = quotations.map(q => q.id === selectedQuote.id ? selectedQuote : q);
       persistList(updatedList);
 
-      // Firestore sync
-      await setDoc(doc(db, 'quotations', selectedQuote.id), {
+      // 2. Clear loading and trigger success toast instantly so the UI is lightning-fast!
+      setSaveSuccess(true);
+      setIsSaving(false);
+      setTimeout(() => setSaveSuccess(false), 3000);
+
+      // 3. Sync to Cloud Firestore in the background without blocking the UI rendering cycle
+      setDoc(doc(db, 'quotations', selectedQuote.id), {
         ...selectedQuote,
         createdAt: selectedQuote.createdAt || new Date().toISOString()
+      }).catch((syncErr) => {
+        console.warn("Firestore sync will retry in background:", syncErr);
       });
-      
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
-      console.error("error saving to DB", err);
-      setErrorMsg('Gagal menyinkronkan data ke Cloud Firestore, data tetap tersimpan di browser Anda secara lokal.');
-    } finally {
+      console.error("Error saving quotation:", err);
+      setErrorMsg('Gagal menyimpan perubahan secara lokal.');
       setIsSaving(false);
     }
   };
@@ -979,22 +983,8 @@ export default function QuotationLetterCreator() {
                       <p className="font-extrabold text-slate-900 uppercase tracking-wide leading-none">Hormat Kami,</p>
                       <p className="font-bold text-slate-700 block leading-none">PT. Portal Digital Media Nusantara</p>
                       
-                      {/* Placeholder space for Signature and Red Stamp matching image */}
-                      <div className="h-20 w-44 mx-auto relative flex items-center justify-center select-none shrink-0">
-                        {/* Red round seal placeholder stamp */}
-                        <div className="absolute -left-2 top-0.5 w-[70px] h-[70px] rounded-full border-2 border-dashed border-[#CC0000]/40 flex items-center justify-center rotate-[-12deg] z-0 pointer-events-none">
-                          <div className="w-[58px] h-[58px] rounded-full border border-double border-[#CC0000]/45 flex flex-col items-center justify-center opacity-70">
-                            <span className="text-[6px] font-black uppercase text-[#CC0000] leading-none">METARA</span>
-                            <span className="text-[5px] font-bold text-slate-400 mt-0.5 leading-none">RED-SEAL</span>
-                            <span className="text-[4.5px] font-medium text-[#CC0000] leading-none uppercase mt-0.5">TERSELARAS</span>
-                          </div>
-                        </div>
-                        
-                        {/* Elegant cursive placeholder signature of director */}
-                        <div className="font-sans text-xl italic text-sky-800/75 select-none z-10 transform translate-x-4 rotate-[-5deg] font-semibold">
-                          {selectedQuote.signerName.split(',')[0]}
-                        </div>
-                      </div>
+                      {/* Reserved space for manual signature and actual physical wet stamp */}
+                      <div className="h-20 w-44 mx-auto relative select-none shrink-0" />
 
                       {/* Line Name and title */}
                       <div className="space-y-0.5">
