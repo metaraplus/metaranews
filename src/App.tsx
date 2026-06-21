@@ -33,7 +33,10 @@ import {
   Download,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Edit3,
+  X,
+  Save
 } from 'lucide-react';
 
 export default function App() {
@@ -61,6 +64,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+
+  // --- Profile Settings Modal State ---
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profileUsername, setProfileUsername] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   // Fetch all collections from Firestore on mount
   useEffect(() => {
@@ -256,8 +268,14 @@ export default function App() {
     try {
       if (articleData.id) {
         // Edit mode
-        setArticles(prev => prev.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art));
-        await setDoc(doc(db, 'articles', articleData.id), { ...articleData } as Article);
+        const updated = articles.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art);
+        setArticles(updated);
+        localStorage.setItem('metaranews_articles', JSON.stringify(updated));
+        try {
+          await setDoc(doc(db, 'articles', articleData.id), { ...articleData } as Article);
+        } catch (dbErr) {
+          console.warn("Sinkronisasi Firestore gagal, data disimpan secara lokal:", dbErr);
+        }
       } else {
         // Add mode
         const newId = `a-${Date.now()}`;
@@ -265,21 +283,33 @@ export default function App() {
           ...articleData,
           id: newId
         } as Article;
-        setArticles(prev => [newArticle, ...prev]);
-        await setDoc(doc(db, 'articles', newId), newArticle);
+        const updated = [newArticle, ...articles];
+        setArticles(updated);
+        localStorage.setItem('metaranews_articles', JSON.stringify(updated));
+        try {
+          await setDoc(doc(db, 'articles', newId), newArticle);
+        } catch (dbErr) {
+          console.warn("Sinkronisasi Firestore gagal, data disimpan secara lokal:", dbErr);
+        }
       }
     } catch (err) {
-      console.error("Gagal menyimpan artikel ke Firestore:", err);
+      console.error("Gagal menyimpan artikel:", err);
     }
     setEditingArticle(null);
   };
 
   const handleDeleteArticle = async (id: string) => {
     try {
-      setArticles(prev => prev.filter(a => a.id !== id));
-      await deleteDoc(doc(db, 'articles', id));
+      const updated = articles.filter(a => a.id !== id);
+      setArticles(updated);
+      localStorage.setItem('metaranews_articles', JSON.stringify(updated));
+      try {
+        await deleteDoc(doc(db, 'articles', id));
+      } catch (dbErr) {
+        console.warn("Gagal menghapus item dari Firestore, perubahan tetap disimpan di browser:", dbErr);
+      }
     } catch (err) {
-      console.error("Gagal menghapus artikel dari Firestore:", err);
+      console.error("Gagal menghapus artikel:", err);
     }
   };
 
@@ -297,19 +327,31 @@ export default function App() {
         role,
         coverage
       };
-      setJournalists(prev => [...prev, newJurn]);
-      await setDoc(doc(db, 'journalists', newJurn.id), newJurn);
+      const updated = [...journalists, newJurn];
+      setJournalists(updated);
+      localStorage.setItem('metaranews_journalists', JSON.stringify(updated));
+      try {
+        await setDoc(doc(db, 'journalists', newJurn.id), newJurn);
+      } catch (dbErr) {
+        console.warn("Gagal mengunggah jurnalis ke Firestore, tersimpan lokal:", dbErr);
+      }
     } catch (err) {
-      console.error("Gagal menyimpan jurnalis ke Firestore:", err);
+      console.error("Gagal menyimpan jurnalis:", err);
     }
   };
 
   const handleDeleteJournalist = async (id: string) => {
     try {
-      setJournalists(prev => prev.filter(j => j.id !== id));
-      await deleteDoc(doc(db, 'journalists', id));
+      const updated = journalists.filter(j => j.id !== id);
+      setJournalists(updated);
+      localStorage.setItem('metaranews_journalists', JSON.stringify(updated));
+      try {
+        await deleteDoc(doc(db, 'journalists', id));
+      } catch (dbErr) {
+        console.warn("Gagal menghapus jurnalis di Firestore, tersimpan lokal:", dbErr);
+      }
     } catch (err) {
-      console.error("Gagal menghapus jurnalis dari Firestore:", err);
+      console.error("Gagal menghapus jurnalis:", err);
     }
   };
 
@@ -318,8 +360,14 @@ export default function App() {
       const oldJurn = journalists.find(j => j.id === id);
       const oldName = oldJurn ? oldJurn.name : '';
 
-      setJournalists(prev => prev.map(j => j.id === id ? { ...j, name, role, coverage } : j));
-      await setDoc(doc(db, 'journalists', id), { id, name, role, coverage });
+      const updatedJs = journalists.map(j => j.id === id ? { ...j, name, role, coverage } : j);
+      setJournalists(updatedJs);
+      localStorage.setItem('metaranews_journalists', JSON.stringify(updatedJs));
+      try {
+        await setDoc(doc(db, 'journalists', id), { id, name, role, coverage });
+      } catch (dbErr) {
+        console.warn("Gagal memperbarui jurnalis di Firestore, tersimpan lokal:", dbErr);
+      }
 
       if (oldName && oldName !== name) {
         const updatedArticles = articles.map(art => {
@@ -331,17 +379,23 @@ export default function App() {
           return { updated, changed };
         });
 
-        setArticles(prev => prev.map((art, index) => updatedArticles[index].changed ? updatedArticles[index].updated : art));
+        const newArticles = articles.map((art, index) => updatedArticles[index].changed ? updatedArticles[index].updated : art);
+        setArticles(newArticles);
+        localStorage.setItem('metaranews_articles', JSON.stringify(newArticles));
 
-        // Sync renamed references in Firestore
+        // Sync renamed references in Firestore non-blockingly
         for (const item of updatedArticles) {
           if (item.changed) {
-            await setDoc(doc(db, 'articles', item.updated.id), item.updated);
+            try {
+              await setDoc(doc(db, 'articles', item.updated.id), item.updated);
+            } catch (dbErr) {
+              console.warn("Gagal menyelaraskan referensi jurnalis di artikel:", dbErr);
+            }
           }
         }
       }
     } catch (err) {
-      console.error("Gagal memperbarui jurnalis di Firestore:", err);
+      console.error("Gagal memperbarui jurnalis:", err);
     }
   };
 
@@ -353,65 +407,158 @@ export default function App() {
         name,
         color
       };
-      setCategories(prev => [...prev, newCat]);
-      await setDoc(doc(db, 'categories', newCat.id), newCat);
+      const updated = [...categories, newCat];
+      setCategories(updated);
+      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
+      try {
+        await setDoc(doc(db, 'categories', newCat.id), newCat);
+      } catch (dbErr) {
+        console.warn("Gagal menyimpan kategori ke Firestore, tersimpan lokal:", dbErr);
+      }
     } catch (err) {
-      console.error("Gagal menyimpan kategori ke Firestore:", err);
+      console.error("Gagal menyimpan kategori:", err);
     }
   };
 
   const handleDeleteCategory = async (id: string) => {
     try {
-      setCategories(prev => prev.filter(c => c.id !== id));
-      await deleteDoc(doc(db, 'categories', id));
+      const updated = categories.filter(c => c.id !== id);
+      setCategories(updated);
+      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
+      try {
+        await deleteDoc(doc(db, 'categories', id));
+      } catch (dbErr) {
+        console.warn("Gagal menghapus kategori dari Firestore, tersimpan lokal:", dbErr);
+      }
     } catch (err) {
-      console.error("Gagal menghapus kategori dari Firestore:", err);
+      console.error("Gagal menghapus kategori:", err);
     }
   };
 
   const handleEditCategory = async (id: string, name: string, color: string) => {
     try {
       const updatedCat = { id, name, color };
-      setCategories(prev => prev.map(c => c.id === id ? updatedCat : c));
-      await setDoc(doc(db, 'categories', id), updatedCat);
+      const updated = categories.map(c => c.id === id ? updatedCat : c);
+      setCategories(updated);
+      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
+      try {
+        await setDoc(doc(db, 'categories', id), updatedCat);
+      } catch (dbErr) {
+        console.warn("Gagal memperbarui kategori di Firestore, tersimpan lokal:", dbErr);
+      }
     } catch (err) {
-      console.error("Gagal memperbarui kategori di Firestore:", err);
+      console.error("Gagal memperbarui kategori:", err);
     }
   };
 
   // --- Personnel Credentials Operations ---
   const handleAddPersonnel = async (fullName: string, username: string, password: string, role: Personnel['role'], jId?: string) => {
-    const newPers: Personnel = {
-      id: `p-${Date.now()}`,
-      username,
-      password,
-      role,
-      fullName,
-      journalistId: jId
-    };
-    setPersonnels(prev => [...prev, newPers]);
-    await setDoc(doc(db, 'personnels', newPers.id), newPers);
+    try {
+      const newPers: Personnel = {
+        id: `p-${Date.now()}`,
+        username,
+        password,
+        role,
+        fullName,
+        journalistId: jId
+      };
+      const updated = [...personnels, newPers];
+      setPersonnels(updated);
+      localStorage.setItem('metaranews_personnels', JSON.stringify(updated));
+      try {
+        await setDoc(doc(db, 'personnels', newPers.id), newPers);
+      } catch (dbErr) {
+        console.warn("Gagal mengunggah personil ke Firestore, tersimpan lokal:", dbErr);
+      }
+    } catch (err) {
+      console.error("Gagal menyimpan personil:", err);
+    }
   };
 
   const handleUpdatePersonnel = async (id: string, updated: Partial<Personnel>) => {
-    const updatedPersonnels = personnels.map(p => p.id === id ? { ...p, ...updated } as Personnel : p);
-    setPersonnels(updatedPersonnels);
-    
-    const target = updatedPersonnels.find(p => p.id === id);
-    if (target) {
-      await setDoc(doc(db, 'personnels', id), target);
-    }
+    try {
+      const updatedPersonnels = personnels.map(p => p.id === id ? { ...p, ...updated } as Personnel : p);
+      setPersonnels(updatedPersonnels);
+      localStorage.setItem('metaranews_personnels', JSON.stringify(updatedPersonnels));
+      
+      const target = updatedPersonnels.find(p => p.id === id);
+      if (target) {
+        try {
+          await setDoc(doc(db, 'personnels', id), target);
+        } catch (dbErr) {
+          console.warn("Gagal memutasi personil di Firestore, tersimpan lokal:", dbErr);
+        }
+      }
 
-    if (currentUser && currentUser.id === id) {
-      const refreshed = { ...currentUser, ...updated } as Personnel;
-      setCurrentUser(refreshed);
-      localStorage.setItem('metaranews_current_user', JSON.stringify(refreshed));
+      if (currentUser && currentUser.id === id) {
+        const refreshed = { ...currentUser, ...updated } as Personnel;
+        setCurrentUser(refreshed);
+        localStorage.setItem('metaranews_current_user', JSON.stringify(refreshed));
+      }
+    } catch (err) {
+      console.error("Gagal memperbarui personil:", err);
     }
   };
 
   const handleDeletePersonnel = async (id: string) => {
-    setPersonnels(prev => prev.filter(p => p.id !== id));
-    await deleteDoc(doc(db, 'personnels', id));
+    try {
+      const updated = personnels.filter(p => p.id !== id);
+      setPersonnels(updated);
+      localStorage.setItem('metaranews_personnels', JSON.stringify(updated));
+      try {
+        await deleteDoc(doc(db, 'personnels', id));
+      } catch (dbErr) {
+        console.warn("Gagal menghapus personil di Firestore, tersimpan lokal:", dbErr);
+      }
+    } catch (err) {
+      console.error("Gagal menghapus personil:", err);
+    }
+  };
+
+  // --- Current User Profile Save Operation ---
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileSuccess(false);
+
+    if (!currentUser) return;
+    if (!profileFullName.trim()) {
+      setProfileError('Nama lengkap tidak boleh kosong.');
+      return;
+    }
+    if (!profileUsername.trim() || profileUsername.trim().length < 3) {
+      setProfileError('Username minimal 3 karakter.');
+      return;
+    }
+    if (!profilePassword.trim() || profilePassword.trim().length < 4) {
+      setProfileError('Password minimal 4 karakter.');
+      return;
+    }
+
+    // Check duplicate username
+    const dup = personnels.some(p => p.id !== currentUser.id && p.username.toLowerCase() === profileUsername.trim().toLowerCase());
+    if (dup) {
+      setProfileError('Username sudah dipakai oleh personil lain.');
+      return;
+    }
+
+    try {
+      setProfileLoading(true);
+      await handleUpdatePersonnel(currentUser.id, {
+        fullName: profileFullName.trim(),
+        username: profileUsername.trim().toLowerCase(),
+        password: profilePassword
+      });
+      setProfileSuccess(true);
+      setTimeout(() => {
+        setIsProfileModalOpen(false);
+        setProfileSuccess(false);
+      }, 1500);
+    } catch (err: any) {
+      setProfileError(err.message || 'Gagal menyimpan profil.');
+    } finally {
+      setProfileLoading(false);
+    }
   };
 
   // --- Dynamic Authentication Handlers ---
@@ -632,13 +779,30 @@ export default function App() {
               </div>
             </div>
 
-            {/* Quick Profile context info */}
-            <div className="flex items-center gap-3 border-l border-slate-150 pl-4 py-1">
-              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-extrabold text-xs border border-slate-200 select-none">
+            {/* Quick Profile context info (Clickable to change credentials) */}
+            <div 
+              className="flex items-center gap-3 border-l border-slate-150 pl-4 py-1 hover:bg-slate-50/80 cursor-pointer rounded-lg px-2 transition-all group"
+              onClick={() => {
+                if (currentUser) {
+                  setProfileFullName(currentUser.fullName);
+                  setProfileUsername(currentUser.username);
+                  setProfilePassword(currentUser.password || '');
+                  setProfileError('');
+                  setProfileSuccess(false);
+                  setIsProfileModalOpen(true);
+                }
+              }}
+              title="Klik untuk ubah kredensial akun Anda"
+              id="header-profile-selector"
+            >
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 group-hover:bg-sky-50 group-hover:text-sky-700 group-hover:border-sky-305 font-extrabold text-xs border border-slate-200 select-none transition-all">
                 {currentUser.fullName ? currentUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'US'}
               </div>
               <div className="text-left">
-                <div className="text-xs font-bold text-slate-850 leading-tight">{currentUser.fullName}</div>
+                <div className="text-xs font-bold text-slate-850 leading-tight group-hover:text-sky-750 group-hover:underline flex items-center gap-1 transition-all">
+                  {currentUser.fullName}
+                  <Edit3 className="w-2.5 h-2.5 text-slate-400 group-hover:text-sky-600 inline opacity-60" />
+                </div>
                 <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1 mt-0.5">
                   <span className={`px-1.5 py-0.2 rounded-sm text-[8px] font-black uppercase ${
                     currentUser.role === 'Admin' ? 'bg-red-50 text-red-650 border border-red-200' :
@@ -646,7 +810,10 @@ export default function App() {
                     'bg-emerald-50 text-emerald-650 border border-emerald-200'
                   }`}>{currentUser.role}</span>
                   <button 
-                    onClick={handleLogout}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLogout();
+                    }}
                     className="text-[10px] text-red-500 hover:text-red-700 font-extrabold ml-1.5 cursor-pointer underline hover:no-underline"
                   >
                     Logout
@@ -1092,6 +1259,94 @@ export default function App() {
         journalists={journalists}
         categories={categories}
       />
+
+      {/* --- EDIT CURRENT USER PROFILE MODAL --- */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto font-sans" id="profile-modal-backdrop">
+          <div className="bg-white rounded-2xl border border-slate-100 max-w-md w-full overflow-hidden flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Pengaturan Kredensial Akun</h2>
+                <p className="text-[10px] text-slate-500 mt-0.5">Ubah sandi masuk dan kredensial personil Anda.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsProfileModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              {profileError && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-[11px] font-semibold text-red-650">
+                  {profileError}
+                </div>
+              )}
+              {profileSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-[11px] font-semibold text-emerald-650 flex items-center gap-1.5 animate-bounce">
+                  <CheckCircle className="w-3.5 h-3.5" /> Kredensial berhasil diperbarui secara instan!
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">Nama Lengkap</label>
+                <input
+                  type="text"
+                  value={profileFullName}
+                  onChange={(e) => setProfileFullName(e.target.value)}
+                  placeholder="Nama Lengkap..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800 font-semibold focus:outline-hidden focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">Username Login</label>
+                <input
+                  type="text"
+                  value={profileUsername}
+                  onChange={(e) => setProfileUsername(e.target.value)}
+                  placeholder="Username login..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-205 bg-white text-slate-800 font-mono focus:outline-hidden focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 block">Sandi Masuk (Password)</label>
+                <input
+                  type="text"
+                  value={profilePassword}
+                  onChange={(e) => setProfilePassword(e.target.value)}
+                  placeholder="Password masuk..."
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-205 bg-white text-slate-800 font-mono focus:outline-hidden focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
