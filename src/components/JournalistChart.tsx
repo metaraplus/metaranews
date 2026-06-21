@@ -7,6 +7,13 @@ import React, { useState, useMemo } from 'react';
 import { Article, Journalist } from '../types';
 import { Award, FileText, Camera, Users, PieChart } from 'lucide-react';
 
+interface DailyDataPoint {
+  label: string;
+  fullDate: string;
+  stacks: { name: string; val: number; color: string }[];
+  total: number;
+}
+
 interface JournalistChartProps {
   articles: Article[];
   journalists: Journalist[];
@@ -16,6 +23,7 @@ interface JournalistChartProps {
 export default function JournalistChart({ articles, journalists, selectedMonth }: JournalistChartProps) {
   const [activeMetric, setActiveMetric] = useState<'all' | 'reporter' | 'writer' | 'documenter'>('all');
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
+  const [selectedJournalist, setSelectedJournalist] = useState<string | null>(null);
 
   // Filter articles based on selected month
   const filteredArticles = useMemo(() => {
@@ -49,65 +57,115 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
     return monthMap[selectedMonth] || selectedMonth;
   }, [selectedMonth]);
 
-  // Compute daily contribution stats
-  const dailyData = useMemo(() => {
+  // Stable color map for journalists using specific design palette
+  const getJurnColor = (name: string) => {
+    const idx = journalists.findIndex(j => j.name === name);
+    const colors = [
+      '#f43f5e', // Rose
+      '#10b981', // Emerald
+      '#6366f1', // Indigo
+      '#0ea5e9', // Sky blue
+      '#f59e0b', // Amber
+      '#ec4899', // Pink
+      '#8b5cf6', // Violet
+      '#14b8a6', // Teal
+      '#f97316', // Orange
+      '#06b6d4', // Cyan
+      '#84cc16', // Lime
+      '#64748b'  // Slate
+    ];
+    if (idx === -1) return '#94a3b8'; // Default grey
+    return colors[idx % colors.length];
+  };
+
+  // Find all journalists that actually have any contribution in the current filtered list of articles
+  const activeJournalists = useMemo(() => {
+    return journalists.filter(jurn => {
+      return filteredArticles.some(a => {
+        if (activeMetric === 'all') {
+          return a.reporter === jurn.name || a.writer === jurn.name || a.documenter === jurn.name;
+        } else if (activeMetric === 'reporter') {
+          return a.reporter === jurn.name;
+        } else if (activeMetric === 'writer') {
+          return a.writer === jurn.name;
+        } else if (activeMetric === 'documenter') {
+          return a.documenter === jurn.name;
+        }
+        return false;
+      });
+    });
+  }, [journalists, filteredArticles, activeMetric]);
+
+  // Compute daily contribution stats stacked per journalist
+  const dailyData = useMemo<DailyDataPoint[]>(() => {
+    const getDayData = (dateStr: string, labelStr: string): DailyDataPoint => {
+      const dayArticles = filteredArticles.filter(a => a.date === dateStr);
+      
+      // Calculate stacks for each active journalist
+      const stacks: { name: string; val: number; color: string }[] = [];
+      let dayTotal = 0;
+
+      activeJournalists.forEach(jurn => {
+        // If a journalist is selected via legend click, filter out other journalists from this calculation
+        if (selectedJournalist && jurn.name !== selectedJournalist) return;
+
+        let val = 0;
+        dayArticles.forEach(a => {
+          if (activeMetric === 'all') {
+            if (a.reporter === jurn.name) val++;
+            if (a.writer === jurn.name) val++;
+            if (a.documenter === jurn.name) val++;
+          } else if (activeMetric === 'reporter') {
+            if (a.reporter === jurn.name) val++;
+          } else if (activeMetric === 'writer') {
+            if (a.writer === jurn.name) val++;
+          } else if (activeMetric === 'documenter') {
+            if (a.documenter === jurn.name) val++;
+          }
+        });
+
+        if (val > 0) {
+          stacks.push({
+            name: jurn.name,
+            val: val,
+            color: getJurnColor(jurn.name)
+          });
+          dayTotal += val;
+        }
+      });
+
+      return {
+        label: labelStr,
+        fullDate: dateStr,
+        stacks,
+        total: dayTotal
+      };
+    };
+
     if (selectedMonth !== 'all') {
       const [yearStr, monthStr] = selectedMonth.split('-');
       const year = parseInt(yearStr, 10);
       const month = parseInt(monthStr, 10);
       const daysInMonth = new Date(year, month, 0).getDate();
       
-      const data = [];
+      const data: DailyDataPoint[] = [];
       for (let day = 1; day <= daysInMonth; day++) {
         const dayStr = day.toString().padStart(2, '0');
         const dateStr = `${selectedMonth}-${dayStr}`;
-        
-        const dayArticles = filteredArticles.filter(a => a.date === dateStr);
-        const reporterCount = dayArticles.filter(a => a.reporter && a.reporter !== 'Tidak ada / Admin').length;
-        const writerCount = dayArticles.filter(a => a.writer && a.writer !== 'Tidak ada / Admin').length;
-        const documenterCount = dayArticles.filter(a => a.documenter && a.documenter !== 'Tidak ada / Admin').length;
-        const total = dayArticles.length;
-        
-        data.push({
-          label: day.toString(),
-          fullDate: dateStr,
-          reporter: reporterCount,
-          writer: writerCount,
-          documenter: documenterCount,
-          total: total
-        });
+        data.push(getDayData(dateStr, day.toString()));
       }
       return data;
     } else {
       // Group by date, fallback for 'all'
-      const datesMap: Record<string, { reporter: number; writer: number; documenter: number; total: number }> = {};
-      filteredArticles.forEach(a => {
-        if (!datesMap[a.date]) {
-          datesMap[a.date] = { reporter: 0, writer: 0, documenter: 0, total: 0 };
-        }
-        datesMap[a.date].total += 1;
-        if (a.reporter && a.reporter !== 'Tidak ada / Admin') datesMap[a.date].reporter += 1;
-        if (a.writer && a.writer !== 'Tidak ada / Admin') datesMap[a.date].writer += 1;
-        if (a.documenter && a.documenter !== 'Tidak ada / Admin') datesMap[a.date].documenter += 1;
-      });
-
-      const uniqueDates = Object.keys(datesMap).sort();
+      const uniqueDates = Array.from(new Set<string>(filteredArticles.map(a => a.date))).sort();
       const limitDates = uniqueDates.slice(-15); // Show last 15 active dates
       
       return limitDates.map(dateStr => {
-        const stats = datesMap[dateStr];
         const [, m, d] = dateStr.split('-');
-        return {
-          label: `${d}/${m}`,
-          fullDate: dateStr,
-          reporter: stats.reporter,
-          writer: stats.writer,
-          documenter: stats.documenter,
-          total: stats.total
-        };
+        return getDayData(dateStr, `${d}/${m}`);
       });
     }
-  }, [filteredArticles, selectedMonth]);
+  }, [filteredArticles, selectedMonth, activeJournalists, activeMetric, journalists, selectedJournalist]);
 
   // Chart measurements
   const chartHeight = 280;
@@ -118,13 +176,10 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
 
   const maxVal = useMemo(() => {
     if (dailyData.length === 0) return 5;
-    const values = dailyData.map(d => {
-      if (activeMetric === 'all') return d.total;
-      return d[activeMetric] || 0;
-    });
+    const values = dailyData.map(d => d.total);
     const max = Math.max(...values);
     return max <= 0 ? 5 : max;
-  }, [dailyData, activeMetric]);
+  }, [dailyData]);
 
   // Rounded grid ticks based on max value
   const ticks = useMemo(() => {
@@ -210,12 +265,59 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
           <p className="text-xs text-slate-400 mt-1">Silakan tambahkan berita baru atau pilih bulan lain.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div>
+          {/* Legend Warna Jurnalis Aktif */}
+          <div className="mb-4 flex flex-wrap gap-2 px-3 py-2 bg-slate-50 border border-slate-100 text-[10px] items-center justify-start rounded-lg text-slate-500 font-medium" id="journalist-legend-pills">
+            <span className="font-bold self-center uppercase tracking-wider text-[8.5px] mr-1 text-slate-400">
+              {selectedJournalist ? 'Filter Aktif (Klik untuk reset):' : 'Klik Legend Jurnalis untuk Memfilter Grafik:'}
+            </span>
+            {activeJournalists.map(jurn => {
+              const isSelected = selectedJournalist === jurn.name;
+              const hasFilter = selectedJournalist !== null;
+              
+              return (
+                <button
+                  key={jurn.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedJournalist(null);
+                    } else {
+                      setSelectedJournalist(jurn.name);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all border ${
+                    isSelected
+                      ? 'bg-sky-50 border-sky-300 ring-2 ring-sky-100'
+                      : hasFilter
+                      ? 'bg-white border-slate-200 opacity-40 hover:opacity-100'
+                      : 'bg-white border-slate-200 hover:border-slate-305 hover:bg-slate-50'
+                  }`}
+                  title={isSelected ? `Sembunyikan filter ${jurn.name}` : `Tampilkan hanya kontribusi ${jurn.name}`}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getJurnColor(jurn.name) }}></span>
+                  <span className={`font-semibold ${isSelected ? 'text-sky-800' : 'text-slate-700'}`}>{jurn.name}</span>
+                </button>
+              );
+            })}
+            {selectedJournalist && (
+              <button
+                onClick={() => setSelectedJournalist(null)}
+                className="ml-auto text-[9.5px] font-bold text-sky-600 hover:text-sky-850 cursor-pointer flex items-center gap-1 self-center underline"
+              >
+                Tampilkan Semua Jurnalis
+              </button>
+            )}
+            {activeJournalists.length === 0 && (
+              <span className="text-slate-400 italic">Tidak ada jurnalis aktif</span>
+            )}
+          </div>
+
+          <div className="w-full">
           {/* Main vertical Bar Chart (Daily Productivity) */}
-          <div className="lg:col-span-8 overflow-x-auto">
-            <div className="min-w-[400px]">
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[650px] pr-2">
               <svg 
-                viewBox={`0 0 540 ${chartHeight}`} 
+                viewBox={`0 0 760 ${chartHeight}`} 
                 className="w-full h-auto overflow-visible select-none h-[280px]"
                 aria-label="Journalist productivity chart"
               >
@@ -228,7 +330,7 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                       <line
                         x1={paddingLeft}
                         y1={y}
-                        x2={540 - paddingRight}
+                        x2={760 - paddingRight}
                         y2={y}
                         stroke="#e2e8f0"
                         strokeDasharray="4 4"
@@ -252,31 +354,29 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                 <line
                   x1={paddingLeft}
                   y1={chartHeight - paddingBottom}
-                  x2={540 - paddingRight}
+                  x2={760 - paddingRight}
                   y2={chartHeight - paddingBottom}
                   stroke="#cbd5e1"
                   strokeWidth="1"
                 />
 
+                {/* Legend Warna Jurnalis Aktif */}
+                <g className="pointer-events-none">
+                  {/* Legend element is rendered outside SVG using standard HTML overlay or inline legend. Let us put it in the HTML section before grid! */}
+                </g>
+
                 {/* Vertical Bars for each day */}
                 {dailyData.map((d, index) => {
-                  const usableWidth = 540 - paddingLeft - paddingRight;
+                  const usableWidth = 760 - paddingLeft - paddingRight;
                   const barSpacing = usableWidth / dailyData.length;
                   const barWidth = Math.max(barSpacing * 0.65, 4);
                   const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
 
-                  const val = activeMetric === 'all' ? d.total : d[activeMetric] || 0;
-                  const maxTick = Math.max(...ticks);
-                  const height = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * val) / maxTick : 0;
-                  const y = chartHeight - paddingBottom - height;
-
                   const isHovered = hoveredDate === d.fullDate;
+                  const maxTick = Math.max(...ticks);
 
-                  // Choose custom colors based on metric selection
-                  let barColor = "#0ea5e9"; // All (Sky blue)
-                  if (activeMetric === 'reporter') barColor = "#f43f5e"; // Rose
-                  if (activeMetric === 'writer') barColor = "#10b981"; // Emerald
-                  if (activeMetric === 'documenter') barColor = "#6366f1"; // Indigo
+                  // Keep track of stacking Y offsets
+                  let currentYOffset = 0;
 
                   return (
                     <g
@@ -296,18 +396,26 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                         className="transition-opacity duration-150"
                       />
 
-                      {/* Display the actual bar */}
-                      {val > 0 && (
-                        <rect
-                          x={x}
-                          y={y}
-                          width={barWidth}
-                          height={height}
-                          fill={barColor}
-                          rx={Math.min(barWidth / 2, 4)}
-                          className="transition-all duration-300 ease-out hover:brightness-105"
-                        />
-                      )}
+                      {/* Display the stacked bar layers */}
+                      {d.stacks.map((stack, stackIdx) => {
+                        const segmentHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * stack.val) / maxTick : 0;
+                        const segmentY = chartHeight - paddingBottom - currentYOffset - segmentHeight;
+                        
+                        // Accumulate the offset for the next segment in the stack
+                        currentYOffset += segmentHeight;
+
+                        return (
+                          <rect
+                            key={`${d.fullDate}-${stack.name}`}
+                            x={x}
+                            y={segmentY}
+                            width={barWidth}
+                            height={segmentHeight}
+                            fill={stack.color}
+                            className="transition-all duration-300 ease-out hover:brightness-105"
+                          />
+                        );
+                      })}
 
                       {/* Day number x-axis text labels */}
                       {(dailyData.length <= 15 || index % 2 === 0 || isHovered) && (
@@ -324,18 +432,18 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                         </text>
                       )}
 
-                      {/* Floating value indicator immediately above the bar */}
-                      {isHovered && val > 0 && (
+                      {/* Floating total value indicator immediately above the accumulated stack */}
+                      {isHovered && d.total > 0 && (
                         <text
                           x={x + barWidth / 2}
-                          y={Math.max(y - 5, paddingTop + 8)}
+                          y={Math.max(chartHeight - paddingBottom - currentYOffset - 5, paddingTop + 8)}
                           textAnchor="middle"
                           fill="#1e293b"
                           fontSize="9"
                           fontWeight="800"
                           className="font-mono"
                         >
-                          {val}
+                          {d.total}
                         </text>
                       )}
                     </g>
@@ -345,74 +453,96 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                 {/* Floating SVG Tooltip element placed at the top coordinate stack */}
                 {hoveredDate && (() => {
                   const d = dailyData.find(item => item.fullDate === hoveredDate);
-                  if (!d) return null;
+                  if (!d || d.total === 0) return null;
                   const index = dailyData.indexOf(d);
-                  const usableWidth = 540 - paddingLeft - paddingRight;
+                  const usableWidth = 760 - paddingLeft - paddingRight;
                   const barSpacing = usableWidth / dailyData.length;
                   const barWidth = Math.max(barSpacing * 0.65, 4);
                   const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
-                  const val = activeMetric === 'all' ? d.total : d[activeMetric] || 0;
+                  
                   const maxTick = Math.max(...ticks);
-                  const height = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * val) / maxTick : 0;
-                  const y = chartHeight - paddingBottom - height;
-
-                  const tooltipX = x + barWidth / 2;
-                  const tooltipY = Math.max(y - 32, paddingTop + 24);
+                  const totalHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * d.total) / maxTick : 0;
+                  const topOfBar = chartHeight - paddingBottom - totalHeight;
+                  const tooltipY = Math.max(topOfBar - 15, paddingTop + 10);
 
                   const parts = d.fullDate.split('-');
                   const monthsIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                   const monthName = parts[1] ? monthsIndo[parseInt(parts[1], 10) - 1] : '';
                   const dateLabel = parts[2] ? `${parseInt(parts[2], 10)} ${monthName} ${parts[0]}` : d.fullDate;
 
+                  // Tooltip box size dynamic based on number of contributors
+                  const boxHeight = 22 + (d.stacks.length * 12) + 6;
+                  const boxWidth = 150;
+                  
+                  // Constrain inside parent width boundary
+                  let tooltipX = x + barWidth / 2;
+                  if (tooltipX - boxWidth / 2 < paddingLeft) {
+                    tooltipX = paddingLeft + boxWidth / 2;
+                  } else if (tooltipX + boxWidth / 2 > 760 - paddingRight) {
+                    tooltipX = 760 - paddingRight - boxWidth / 2;
+                  }
+
                   return (
                     <g className="pointer-events-none transition-all duration-150 z-50">
                       <rect
-                        x={tooltipX - 70}
-                        y={tooltipY - 42}
-                        width="140"
-                        height="50"
+                        x={tooltipX - boxWidth / 2}
+                        y={tooltipY - boxHeight}
+                        width={boxWidth}
+                        height={boxHeight}
                         rx="6"
                         fill="#0f172a"
                         stroke="#1e293b"
                         strokeWidth="1"
+                        opacity="0.95"
                       />
                       <text
                         x={tooltipX}
-                        y={tooltipY - 28}
+                        y={tooltipY - boxHeight + 14}
                         textAnchor="middle"
-                        fill="#94a3b8"
-                        fontSize="8"
+                        fill="#38bdf8"
+                        fontSize="9"
                         fontWeight="bold"
                       >
                         {dateLabel}
                       </text>
-                      <text
-                        x={tooltipX}
-                        y={tooltipY - 12}
-                        textAnchor="middle"
-                        fill="#ffffff"
-                        fontSize="10"
-                        fontWeight="800"
-                      >
-                        {activeMetric === 'all' ? `${d.total} Berita` : ''}
-                        {activeMetric === 'reporter' ? `${d.reporter} Liputan` : ''}
-                        {activeMetric === 'writer' ? `${d.writer} Rubrikasi` : ''}
-                        {activeMetric === 'documenter' ? `${d.documenter} Dokumentasi` : ''}
-                      </text>
-                      {activeMetric === 'all' && (
-                        <text
-                          x={tooltipX}
-                          y={tooltipY - 4}
-                          textAnchor="middle"
-                          fill="#38bdf8"
-                          fontSize="7"
-                          fontWeight="medium"
-                        >
-                          {`L: ${d.reporter} | W: ${d.writer} | D: ${d.documenter}`}
-                        </text>
-                      )}
+
+                      {d.stacks.map((stack, sIdx) => {
+                        const yPos = tooltipY - boxHeight + 28 + (sIdx * 12);
+                        return (
+                          <g key={stack.name}>
+                            {/* Color Legend Indicator dot inside tooltip */}
+                            <circle
+                              cx={tooltipX - boxWidth / 2 + 12}
+                              cy={yPos - 3}
+                              r="3.5"
+                              fill={stack.color}
+                            />
+                            <text
+                              x={tooltipX - boxWidth / 2 + 22}
+                              y={yPos}
+                              fill="#f8fafc"
+                              fontSize="8.5"
+                              fontWeight="600"
+                              textAnchor="start"
+                            >
+                              {stack.name.length > 15 ? `${stack.name.slice(0, 14)}..` : stack.name}
+                            </text>
+                            <text
+                              x={tooltipX + boxWidth / 2 - 12}
+                              y={yPos}
+                              fill="#94a3b8"
+                              fontSize="8.5"
+                              fontWeight="bold"
+                              textAnchor="end"
+                            >
+                              {stack.val} {activeMetric === 'all' ? 'pnt' : 'karya'}
+                            </text>
+                          </g>
+                        );
+                      })}
+                      
                       <polygon
-                        points={`${tooltipX - 4},${tooltipY + 8} ${tooltipX + 4},${tooltipY + 8} ${tooltipX},${tooltipY + 13}`}
+                        points={`${tooltipX - 4},${tooltipY} ${tooltipX + 4},${tooltipY} ${tooltipX},${tooltipY + 4}`}
                         fill="#0f172a"
                       />
                     </g>
@@ -421,129 +551,8 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
               </svg>
             </div>
           </div>
-
-          {/* Pie Chart: Karya Sendiri vs Rilis */}
-          <div className="lg:col-span-4 bg-slate-50/70 p-4 rounded-xl border border-slate-200 flex flex-col justify-between h-full min-h-[300px]">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5 font-sans">
-                <PieChart className="w-3.5 h-3.5 text-sky-600" />
-                Proporsi Karya Sendiri vs Rilis
-              </h4>
-
-              {totalType === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-400 italic">
-                  Tidak ada data artikel pada periode ini.
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center my-2">
-                  {/* Modern Donut Chart SVG */}
-                  <div className="relative w-32 h-32 my-2">
-                    <svg width="100%" height="100%" viewBox="0 0 140 140" className="-rotate-90">
-                      <defs>
-                        <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#0ea5e9" />
-                          <stop offset="100%" stopColor="#0284c7" />
-                        </linearGradient>
-                        <linearGradient id="indigoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#818cf8" />
-                          <stop offset="100%" stopColor="#4f46e5" />
-                        </linearGradient>
-                      </defs>
-
-                      {/* Background circle */}
-                      <circle cx="70" cy="70" r="45" fill="transparent" stroke="#f1f5f9" strokeWidth="14" />
-
-                      {/* Karya Sendiri Segment */}
-                      {percentKarya > 0 && (
-                        <circle
-                          cx="70"
-                          cy="70"
-                          r="45"
-                          fill="transparent"
-                          stroke="url(#skyGrad)"
-                          strokeWidth="14"
-                          strokeDasharray="282.74"
-                          strokeDashoffset={282.74 - (percentKarya / 100) * 282.74}
-                          strokeLinecap={percentRilis > 0 ? "butt" : "round"}
-                        />
-                      )}
-
-                      {/* Rilis Segment */}
-                      {percentRilis > 0 && (
-                        <circle
-                          cx="70"
-                          cy="70"
-                          r="45"
-                          fill="transparent"
-                          stroke="url(#indigoGrad)"
-                          strokeWidth="14"
-                          strokeDasharray="282.74"
-                          strokeDashoffset={282.74 - (percentRilis / 100) * 282.74}
-                          transform={`rotate(${(percentKarya / 100) * 360} 70 70)`}
-                          strokeLinecap={percentKarya > 0 ? "butt" : "round"}
-                        />
-                      )}
-                    </svg>
-
-                    {/* Donut Center Display */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-[9px] font-black tracking-widest text-slate-400 uppercase leading-none">TOTAL</span>
-                      <span className="text-lg font-black text-slate-800 font-mono mt-0.5">{totalType}</span>
-                      <span className="text-[8px] text-slate-400 font-bold uppercase leading-none -mt-0.5">Berita</span>
-                    </div>
-                  </div>
-
-                  {/* Interactive Dashboard Legends */}
-                  <div className="w-full mt-3 space-y-2">
-                    <div className="flex items-center justify-between p-2 pb-2.5 bg-white rounded-lg border border-slate-100 hover:border-slate-205 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
-                        <span className="text-xs font-bold text-slate-700">Karya Sendiri</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-extrabold text-slate-905 font-mono">{karyaSendiri}</span>
-                        <span className="text-[9px] text-slate-400 ml-1 font-semibold">({percentKarya}%)</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2 pb-2.5 bg-white rounded-lg border border-slate-100 hover:border-slate-205 transition-colors">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
-                        <span className="text-xs font-bold text-slate-700">Rilis Redaksi</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-extrabold text-slate-905 font-mono">{rilis}</span>
-                        <span className="text-[9px] text-slate-400 ml-1 font-semibold">({percentRilis}%)</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Custom Summarization */}
-            <div className="mt-4 pt-3.5 border-t border-slate-200 text-xs text-slate-500">
-              <span className="font-bold text-slate-800 block mb-1 uppercase tracking-wider text-[9px]">Analisis Jenis Karya:</span>
-              <p className="leading-relaxed text-[11px]">
-                {totalType > 0 ? (
-                  <>
-                    Rubrikasi saat ini didominasi oleh{' '}
-                    <strong className="text-slate-700 font-bold">
-                      {karyaSendiri >= rilis ? 'Karya Sendiri (Orisinal)' : 'Rilis Redaksi (Humas)'}
-                    </strong>{' '}
-                    yang mencapai persentase{' '}
-                    <strong className="text-sky-600 font-extrabold">
-                      {Math.max(percentKarya, percentRilis)}%
-                    </strong>{' '}
-                    dari keseluruhan publikasi aktif ({currentMonthLabel}).
-                  </>
-                ) : (
-                  'Belum ada data karya diunggah untuk rentang tanggal terpilih.'
-                )}
-              </p>
-            </div>
-          </div>
         </div>
+      </div>
       )}
     </div>
   );

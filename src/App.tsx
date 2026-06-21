@@ -12,6 +12,7 @@ import {
 } from './data';
 import { Article, Journalist, Category, Personnel } from './types';
 import JournalistChart from './components/JournalistChart';
+import KaryaProportionChart from './components/KaryaProportionChart';
 import ArticleList from './components/ArticleList';
 import ArticleModal from './components/ArticleModal';
 import ManagementPanel from './components/ManagementPanel';
@@ -1120,52 +1121,13 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Column 2: Quick Audit Logs & CSV Export */}
-                <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-100 p-6 shadow-xs flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-semibold text-slate-900 text-sm flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
-                      <Award className="w-4 h-4 text-amber-500 animate-pulse" />
-                      Statistik Pembaca & Eksport Laporan
-                    </h3>
-                    
-                    <div className="space-y-4">
-                      <div className="p-4 bg-slate-50/70 rounded-xl border border-slate-100 text-xs text-slate-650 leading-relaxed">
-                        Data pemantau produktivitas ini menunjukkan efisiensi pembagian tugas antara jurnalis <strong>meliput di lapangan</strong>, <strong>menulis draf</strong>, dan tim <strong>dokumentasi grafis</strong>.
-                        <div className="mt-3 grid grid-cols-2 gap-4">
-                          <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                            <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none">Estimasi Impresi</span>
-                            <span className="text-sm font-black font-mono text-slate-800 tracking-tight block mt-1">
-                              {stats.views.toLocaleString('id-ID')} views
-                            </span>
-                          </div>
-                          <div className="bg-white p-2.5 rounded-lg border border-slate-100">
-                            <span className="text-[10px] text-slate-400 font-bold block uppercase leading-none">Rata-rata/Berita</span>
-                            <span className="text-sm font-black font-mono text-slate-800 tracking-tight block mt-1">
-                              {stats.total > 0 ? Math.round(stats.views / stats.total).toLocaleString('id-ID') : '0'} views
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <span className="text-xs font-bold text-slate-700 block">Butuh Rekapitulasi Rinci?</span>
-                        <p className="text-[11px] text-slate-500">
-                          Eksport seluruh daftar berita bulan {currentMonthLabel} dalam bentuk file Spreadsheet (.CSV) untuk verifikasi pembayaran atau akuntansi redaksi.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleExportReport}
-                    disabled={filteredArticles.length === 0}
-                    className="mt-6 w-full py-2.5 text-xs font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:bg-slate-200 disabled:text-slate-400"
-                    id="export-csv-btn"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Unduh Laporan CSV ({currentMonthLabel})</span>
-                  </button>
+                {/* Column 2: Proporsi Karya Sendiri vs Rilis */}
+                <div className="lg:col-span-6">
+                  <KaryaProportionChart
+                    articles={articles}
+                    selectedMonth={selectedMonth}
+                    onExportReport={handleExportReport}
+                  />
                 </div>
 
               </div>

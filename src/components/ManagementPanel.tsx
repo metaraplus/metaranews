@@ -211,18 +211,6 @@ export default function ManagementPanel({
                 <option value="Kontributor">Kontributor (Eksternal)</option>
                 <option value="Magang">Magang (Intern)</option>
               </select>
-              <select
-                value={jCoverage}
-                onChange={(e) => setJCoverage(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-705 font-medium"
-                id="add-journalist-coverage"
-                title="Sektor Liputan / Penugasan Khusus"
-              >
-                <option value="Tidak Ada">Cover: Tidak Ada / Semua</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.name}>Cover: {c.name}</option>
-                ))}
-              </select>
               <button
                 type="submit"
                 className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0"
@@ -266,16 +254,6 @@ export default function ManagementPanel({
                         <option value="Kontributor">Kontributor</option>
                         <option value="Magang">Magang</option>
                       </select>
-                      <select
-                        value={editingJCoverage}
-                        onChange={(e) => setEditingJCoverage(e.target.value)}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-20 bg-white text-slate-800 font-medium"
-                      >
-                        <option value="Tidak Ada">Cover: Tidak Ada / Semua</option>
-                        {categories.map(c => (
-                          <option key={c.id} value={c.name}>Cover: {c.name}</option>
-                        ))}
-                      </select>
                     </div>
                     {editingJError && <p className="text-[10px] font-bold text-red-600 mt-1">{editingJError}</p>}
                     <div className="flex justify-end gap-1.5">
@@ -300,11 +278,6 @@ export default function ManagementPanel({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-800 block leading-tight">{jurn.name}</span>
-                        {jurn.coverage && jurn.coverage !== 'Tidak Ada' && (
-                          <span className="px-1.5 py-0.2 text-[8px] font-black uppercase text-sky-700 bg-sky-50 border border-sky-200 rounded">
-                            {jurn.coverage}
-                          </span>
-                        )}
                       </div>
                       <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{jurn.role}</span>
                     </div>
