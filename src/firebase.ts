@@ -28,6 +28,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Cloud Firestore and get a reference to the service
-export const db = getFirestore(app);
+// If using the provisioned radiant-cedar-9fjbn sandbox, we must explicitly pass the database ID
+export const db = firebaseConfig.projectId === "radiant-cedar-9fjbn"
+  ? getFirestore(app, "ai-studio-69c184d0-5b30-47d2-b410-4a23184e9310")
+  : getFirestore(app);
 
 export { collection, doc, getDocs, setDoc, deleteDoc, updateDoc };
