@@ -1,0 +1,6 @@
+{
+  "name": "Metaranews Admin Dashboard",
+  "description": "Dashboard administrasi metaranews.co untuk melacak jumlah berita bulanan, peran jurnalis (liputan, penulis, dokumentasi), kategori, tipe rilis/karya, serta grafik produktivitas real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
