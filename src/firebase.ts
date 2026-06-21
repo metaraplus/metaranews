@@ -5,7 +5,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { 
-  getFirestore, 
+  initializeFirestore, 
   collection, 
   doc, 
   getDocs, 
@@ -27,7 +27,9 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Cloud Firestore with the correct sandboxed database ID
-export const db = getFirestore(app, "ai-studio-69c184d0-5b30-47d2-b410-4a23184e9310");
+// Initialize Cloud Firestore with long-polling to prevent websocket handshake timeouts in sandboxed container/iframe preview environments
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, "ai-studio-69c184d0-5b30-47d2-b410-4a23184e9310");
 
 export { collection, doc, getDocs, setDoc, deleteDoc, updateDoc };
