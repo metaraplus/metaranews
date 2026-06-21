@@ -15,7 +15,7 @@ interface JournalistChartProps {
 
 export default function JournalistChart({ articles, journalists, selectedMonth }: JournalistChartProps) {
   const [activeMetric, setActiveMetric] = useState<'all' | 'reporter' | 'writer' | 'documenter'>('all');
-  const [hoveredBarId, setHoveredBarId] = useState<string | null>(null);
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null);
 
   // Filter articles based on selected month
   const filteredArticles = useMemo(() => {
@@ -49,57 +49,92 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
     return monthMap[selectedMonth] || selectedMonth;
   }, [selectedMonth]);
 
-  // Compute stats for each journalist
-  const productivityData = useMemo(() => {
-    return journalists.map(jurn => {
-      const reporterCount = filteredArticles.filter(a => a.reporter === jurn.name).length;
-      const writerCount = filteredArticles.filter(a => a.writer === jurn.name).length;
-      const documenterCount = filteredArticles.filter(a => a.documenter === jurn.name).length;
-      const total = reporterCount + writerCount + documenterCount;
+  // Compute daily contribution stats
+  const dailyData = useMemo(() => {
+    if (selectedMonth !== 'all') {
+      const [yearStr, monthStr] = selectedMonth.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      
+      const data = [];
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayStr = day.toString().padStart(2, '0');
+        const dateStr = `${selectedMonth}-${dayStr}`;
+        
+        const dayArticles = filteredArticles.filter(a => a.date === dateStr);
+        const reporterCount = dayArticles.filter(a => a.reporter && a.reporter !== 'Tidak ada / Admin').length;
+        const writerCount = dayArticles.filter(a => a.writer && a.writer !== 'Tidak ada / Admin').length;
+        const documenterCount = dayArticles.filter(a => a.documenter && a.documenter !== 'Tidak ada / Admin').length;
+        const total = dayArticles.length;
+        
+        data.push({
+          label: day.toString(),
+          fullDate: dateStr,
+          reporter: reporterCount,
+          writer: writerCount,
+          documenter: documenterCount,
+          total: total
+        });
+      }
+      return data;
+    } else {
+      // Group by date, fallback for 'all'
+      const datesMap: Record<string, { reporter: number; writer: number; documenter: number; total: number }> = {};
+      filteredArticles.forEach(a => {
+        if (!datesMap[a.date]) {
+          datesMap[a.date] = { reporter: 0, writer: 0, documenter: 0, total: 0 };
+        }
+        datesMap[a.date].total += 1;
+        if (a.reporter && a.reporter !== 'Tidak ada / Admin') datesMap[a.date].reporter += 1;
+        if (a.writer && a.writer !== 'Tidak ada / Admin') datesMap[a.date].writer += 1;
+        if (a.documenter && a.documenter !== 'Tidak ada / Admin') datesMap[a.date].documenter += 1;
+      });
 
-      return {
-        id: jurn.id,
-        name: jurn.name,
-        role: jurn.role,
-        reporter: reporterCount,
-        writer: writerCount,
-        documenter: documenterCount,
-        total: total
-      };
-    })
-    .filter(item => item.total > 0) // Only show journalists with active work in this timeframe
-    .sort((a, b) => {
-      if (activeMetric === 'all') return b.total - a.total;
-      return b[activeMetric] - a[activeMetric];
-    });
-  }, [journalists, filteredArticles, activeMetric]);
+      const uniqueDates = Object.keys(datesMap).sort();
+      const limitDates = uniqueDates.slice(-15); // Show last 15 active dates
+      
+      return limitDates.map(dateStr => {
+        const stats = datesMap[dateStr];
+        const [, m, d] = dateStr.split('-');
+        return {
+          label: `${d}/${m}`,
+          fullDate: dateStr,
+          reporter: stats.reporter,
+          writer: stats.writer,
+          documenter: stats.documenter,
+          total: stats.total
+        };
+      });
+    }
+  }, [filteredArticles, selectedMonth]);
 
   // Chart measurements
   const chartHeight = 280;
-  const paddingLeft = 140; // Spacing for names
-  const paddingRight = 40;
-  const paddingTop = 20;
-  const paddingBottom = 20;
+  const paddingLeft = 32; // Spacing for Y-axis labels
+  const paddingRight = 10;
+  const paddingTop = 15;
+  const paddingBottom = 30; // Spacing for X-axis labels
 
   const maxVal = useMemo(() => {
-    if (productivityData.length === 0) return 10;
-    const values = productivityData.map(d => {
+    if (dailyData.length === 0) return 5;
+    const values = dailyData.map(d => {
       if (activeMetric === 'all') return d.total;
-      return d[activeMetric];
+      return d[activeMetric] || 0;
     });
     const max = Math.max(...values);
-    return max === 0 ? 10 : max;
-  }, [productivityData, activeMetric]);
+    return max <= 0 ? 5 : max;
+  }, [dailyData, activeMetric]);
 
   // Rounded grid ticks based on max value
   const ticks = useMemo(() => {
     const calculatedTicks = [];
     const count = 4;
-    const interval = Math.ceil(maxVal / count);
+    const interval = Math.ceil(maxVal / count) || 1;
     for (let i = 0; i <= count; i++) {
       calculatedTicks.push(i * interval);
     }
-    return calculatedTicks;
+    return Array.from(new Set(calculatedTicks)).sort((a, b) => a - b);
   }, [maxVal]);
 
   return (
@@ -168,7 +203,7 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
         </div>
       </div>
 
-      {productivityData.length === 0 ? (
+      {filteredArticles.length === 0 ? (
         <div className="h-64 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-100 rounded-xl bg-slate-50/50">
           <Users className="w-8 h-8 text-slate-300 mb-2" />
           <p className="text-sm font-medium text-slate-600">Tidak ada kontribusi jurnalis bulan ini</p>
@@ -176,34 +211,35 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Main Horizontal Bar Chart */}
+          {/* Main vertical Bar Chart (Daily Productivity) */}
           <div className="lg:col-span-8 overflow-x-auto">
             <div className="min-w-[400px]">
               <svg 
                 viewBox={`0 0 540 ${chartHeight}`} 
-                className="w-full h-auto overflow-visible select-none"
+                className="w-full h-auto overflow-visible select-none h-[280px]"
                 aria-label="Journalist productivity chart"
               >
-                {/* Grid Lines & Ticks */}
+                {/* Horizontal Grid lines (Ticks) */}
                 {ticks.map((tick, index) => {
-                  const x = paddingLeft + ((540 - paddingLeft - paddingRight) * tick) / maxVal;
+                  const maxTick = Math.max(...ticks);
+                  const y = chartHeight - paddingBottom - ((chartHeight - paddingBottom - paddingTop) * tick) / maxTick;
                   return (
                     <g key={index} className="opacity-60">
                       <line
-                        x1={x}
-                        y1={paddingTop}
-                        x2={x}
-                        y2={chartHeight - paddingBottom}
+                        x1={paddingLeft}
+                        y1={y}
+                        x2={540 - paddingRight}
+                        y2={y}
                         stroke="#e2e8f0"
                         strokeDasharray="4 4"
                         strokeWidth="1"
                       />
                       <text
-                        x={x}
-                        y={chartHeight - 4}
+                        x={paddingLeft - 8}
+                        y={y + 3}
                         fill="#64748b"
-                        fontSize="10"
-                        textAnchor="middle"
+                        fontSize="9"
+                        textAnchor="end"
                         className="font-mono"
                       >
                         {tick}
@@ -212,138 +248,176 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                   );
                 })}
 
-                {/* Sub-Bars per Journalist */}
-                {productivityData.map((data, index) => {
-                  const barSpacing = (chartHeight - paddingTop - paddingBottom) / productivityData.length;
-                  const y = paddingTop + index * barSpacing + (barSpacing - 18) / 2;
-                  const maxBarWidth = 540 - paddingLeft - paddingRight;
+                {/* X-Axis bottom baseline line */}
+                <line
+                  x1={paddingLeft}
+                  y1={chartHeight - paddingBottom}
+                  x2={540 - paddingRight}
+                  y2={chartHeight - paddingBottom}
+                  stroke="#cbd5e1"
+                  strokeWidth="1"
+                />
 
-                  // Values
-                  const wReporter = (maxBarWidth * data.reporter) / maxVal;
-                  const wWriter = (maxBarWidth * data.writer) / maxVal;
-                  const wDoc = (maxBarWidth * data.documenter) / maxVal;
-                  const wTotal = (maxBarWidth * data.total) / maxVal;
+                {/* Vertical Bars for each day */}
+                {dailyData.map((d, index) => {
+                  const usableWidth = 540 - paddingLeft - paddingRight;
+                  const barSpacing = usableWidth / dailyData.length;
+                  const barWidth = Math.max(barSpacing * 0.65, 4);
+                  const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
 
-                  const isHovered = hoveredBarId === data.id;
+                  const val = activeMetric === 'all' ? d.total : d[activeMetric] || 0;
+                  const maxTick = Math.max(...ticks);
+                  const height = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * val) / maxTick : 0;
+                  const y = chartHeight - paddingBottom - height;
+
+                  const isHovered = hoveredDate === d.fullDate;
+
+                  // Choose custom colors based on metric selection
+                  let barColor = "#0ea5e9"; // All (Sky blue)
+                  if (activeMetric === 'reporter') barColor = "#f43f5e"; // Rose
+                  if (activeMetric === 'writer') barColor = "#10b981"; // Emerald
+                  if (activeMetric === 'documenter') barColor = "#6366f1"; // Indigo
 
                   return (
                     <g
-                      key={data.id}
-                      onMouseEnter={() => setHoveredBarId(data.id)}
-                      onMouseLeave={() => setHoveredBarId(null)}
+                      key={d.fullDate}
+                      onMouseEnter={() => setHoveredDate(d.fullDate)}
+                      onMouseLeave={() => setHoveredDate(null)}
                       className="cursor-pointer group"
                     >
-                      {/* Name Label */}
-                      <text
-                        x={paddingLeft - 12}
-                        y={y + 11}
-                        textAnchor="end"
-                        fontSize="11"
-                        fontWeight="500"
-                        fill={isHovered ? '#0f172a' : '#475569'}
-                        className="transition-colors duration-200"
-                      >
-                        {data.name}
-                      </text>
-
-                      {/* Ghost Background bar container to help hover */}
+                      {/* Hover background interactive column trigger */}
                       <rect
-                        x={paddingLeft}
-                        y={y - 4}
-                        width={maxBarWidth}
-                        height={24}
-                        fill="transparent"
-                        rx="4"
+                        x={paddingLeft + index * barSpacing}
+                        y={paddingTop}
+                        width={barSpacing}
+                        height={chartHeight - paddingTop - paddingBottom}
+                        fill="#f8fafc"
+                        opacity={isHovered ? 0.75 : 0}
+                        className="transition-opacity duration-150"
                       />
 
-                      {/* Drawing the active metric bars */}
-                      {activeMetric === 'all' ? (
-                        /* Stacked or Segmented Bar representing contribution blend */
-                        <g>
-                          {/* Liputan Portion (Rose) */}
-                          <rect
-                            x={paddingLeft}
-                            y={y}
-                            width={Math.max(wReporter, 2)}
-                            height={12}
-                            fill="#f43f5e"
-                            rx={data.writer === 0 && data.documenter === 0 ? 3 : 0}
-                            className="transition-all duration-500 ease-out"
-                          />
-                          {/* Penulis Portion (Emerald) */}
-                          <rect
-                            x={paddingLeft + wReporter}
-                            y={y}
-                            width={Math.max(wWriter, 2)}
-                            height={12}
-                            fill="#10b981"
-                            rx={data.documenter === 0 && wReporter === 0 ? 3 : 0}
-                            className="transition-all duration-500 ease-out"
-                          />
-                          {/* Dokumentasi Portion (Indigo) */}
-                          <rect
-                            x={paddingLeft + wReporter + wWriter}
-                            y={y}
-                            width={Math.max(wDoc, 2)}
-                            height={12}
-                            fill="#6366f1"
-                            rx={3}
-                            className="transition-all duration-500 ease-out"
-                          />
-                          {/* Total Indicator label (visible on hover) */}
-                          <text
-                            x={paddingLeft + wTotal + 8}
-                            y={y + 10}
-                            fontSize="10"
-                            fontWeight="600"
-                            fill="#1e293b"
-                            className={`transition-opacity duration-200 ${
-                              isHovered ? 'opacity-100' : 'opacity-85'
-                            } font-mono`}
-                          >
-                            {data.total}
-                          </text>
-                        </g>
-                      ) : (
-                        /* Single colored bar representing selected metric */
-                        <g>
-                          <rect
-                            x={paddingLeft}
-                            y={y}
-                            width={Math.max(
-                              activeMetric === 'reporter' ? wReporter :
-                              activeMetric === 'writer' ? wWriter : wDoc,
-                              1
-                            )}
-                            height={12}
-                            fill={
-                              activeMetric === 'reporter' ? '#f43f5e' :
-                              activeMetric === 'writer' ? '#10b981' : '#6366f1'
-                            }
-                            rx={3}
-                            className="transition-all duration-500 ease-out"
-                          />
-                          <text
-                            x={
-                              paddingLeft + (
-                                activeMetric === 'reporter' ? wReporter :
-                                activeMetric === 'writer' ? wWriter : wDoc
-                              ) + 8
-                            }
-                            y={y + 10}
-                            fontSize="10"
-                            fontWeight="600"
-                            fill="#1e293b"
-                            className="font-mono"
-                          >
-                            {activeMetric === 'reporter' ? data.reporter :
-                             activeMetric === 'writer' ? data.writer : data.documenter}
-                          </text>
-                        </g>
+                      {/* Display the actual bar */}
+                      {val > 0 && (
+                        <rect
+                          x={x}
+                          y={y}
+                          width={barWidth}
+                          height={height}
+                          fill={barColor}
+                          rx={Math.min(barWidth / 2, 4)}
+                          className="transition-all duration-300 ease-out hover:brightness-105"
+                        />
+                      )}
+
+                      {/* Day number x-axis text labels */}
+                      {(dailyData.length <= 15 || index % 2 === 0 || isHovered) && (
+                        <text
+                          x={x + barWidth / 2}
+                          y={chartHeight - paddingBottom + 14}
+                          textAnchor="middle"
+                          fill={isHovered ? "#0f172a" : "#94a3b8"}
+                          fontSize={isHovered ? "10" : "8"}
+                          fontWeight={isHovered ? "700" : "500"}
+                          className="transition-all font-mono duration-150"
+                        >
+                          {d.label}
+                        </text>
+                      )}
+
+                      {/* Floating value indicator immediately above the bar */}
+                      {isHovered && val > 0 && (
+                        <text
+                          x={x + barWidth / 2}
+                          y={Math.max(y - 5, paddingTop + 8)}
+                          textAnchor="middle"
+                          fill="#1e293b"
+                          fontSize="9"
+                          fontWeight="800"
+                          className="font-mono"
+                        >
+                          {val}
+                        </text>
                       )}
                     </g>
                   );
                 })}
+
+                {/* Floating SVG Tooltip element placed at the top coordinate stack */}
+                {hoveredDate && (() => {
+                  const d = dailyData.find(item => item.fullDate === hoveredDate);
+                  if (!d) return null;
+                  const index = dailyData.indexOf(d);
+                  const usableWidth = 540 - paddingLeft - paddingRight;
+                  const barSpacing = usableWidth / dailyData.length;
+                  const barWidth = Math.max(barSpacing * 0.65, 4);
+                  const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
+                  const val = activeMetric === 'all' ? d.total : d[activeMetric] || 0;
+                  const maxTick = Math.max(...ticks);
+                  const height = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * val) / maxTick : 0;
+                  const y = chartHeight - paddingBottom - height;
+
+                  const tooltipX = x + barWidth / 2;
+                  const tooltipY = Math.max(y - 32, paddingTop + 24);
+
+                  const parts = d.fullDate.split('-');
+                  const monthsIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                  const monthName = parts[1] ? monthsIndo[parseInt(parts[1], 10) - 1] : '';
+                  const dateLabel = parts[2] ? `${parseInt(parts[2], 10)} ${monthName} ${parts[0]}` : d.fullDate;
+
+                  return (
+                    <g className="pointer-events-none transition-all duration-150 z-50">
+                      <rect
+                        x={tooltipX - 70}
+                        y={tooltipY - 42}
+                        width="140"
+                        height="50"
+                        rx="6"
+                        fill="#0f172a"
+                        stroke="#1e293b"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={tooltipX}
+                        y={tooltipY - 28}
+                        textAnchor="middle"
+                        fill="#94a3b8"
+                        fontSize="8"
+                        fontWeight="bold"
+                      >
+                        {dateLabel}
+                      </text>
+                      <text
+                        x={tooltipX}
+                        y={tooltipY - 12}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize="10"
+                        fontWeight="800"
+                      >
+                        {activeMetric === 'all' ? `${d.total} Berita` : ''}
+                        {activeMetric === 'reporter' ? `${d.reporter} Liputan` : ''}
+                        {activeMetric === 'writer' ? `${d.writer} Rubrikasi` : ''}
+                        {activeMetric === 'documenter' ? `${d.documenter} Dokumentasi` : ''}
+                      </text>
+                      {activeMetric === 'all' && (
+                        <text
+                          x={tooltipX}
+                          y={tooltipY - 4}
+                          textAnchor="middle"
+                          fill="#38bdf8"
+                          fontSize="7"
+                          fontWeight="medium"
+                        >
+                          {`L: ${d.reporter} | W: ${d.writer} | D: ${d.documenter}`}
+                        </text>
+                      )}
+                      <polygon
+                        points={`${tooltipX - 4},${tooltipY + 8} ${tooltipX + 4},${tooltipY + 8} ${tooltipX},${tooltipY + 13}`}
+                        fill="#0f172a"
+                      />
+                    </g>
+                  );
+                })()}
               </svg>
             </div>
           </div>
