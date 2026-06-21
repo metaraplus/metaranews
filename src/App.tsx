@@ -15,18 +15,6 @@ import JournalistChart from './components/JournalistChart';
 import ArticleList from './components/ArticleList';
 import ArticleModal from './components/ArticleModal';
 import ManagementPanel from './components/ManagementPanel';
-import LoginScreen from './components/LoginScreen';
-import PersonnelPanel from './components/PersonnelPanel';
-import { db, auth, UserProfile } from './firebase';
-import { signOut } from 'firebase/auth';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  onSnapshot, 
-  getDocs 
-} from 'firebase/firestore';
 import { 
   LayoutDashboard, 
   Newspaper, 
@@ -40,109 +28,44 @@ import {
   Layers, 
   Users, 
   Sparkles,
-  Download,
-  LogOut
+  Download
 } from 'lucide-react';
 
 export default function App() {
-  // --- Firebase User Sessions ---
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
-    const cached = localStorage.getItem('metaranews_user');
-    return cached ? JSON.parse(cached) : null;
+  // --- Persistent State Initialization ---
+  const [articles, setArticles] = useState<Article[]>(() => {
+    const local = localStorage.getItem('metaranews_articles');
+    return local ? JSON.parse(local) : INITIAL_ARTICLES;
   });
 
-  // --- Real-Time Sync State ---
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [journalists, setJournalists] = useState<Journalist[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [dbLoading, setDbLoading] = useState(true);
+  const [journalists, setJournalists] = useState<Journalist[]>(() => {
+    const local = localStorage.getItem('metaranews_journalists');
+    return local ? JSON.parse(local) : INITIAL_JOURNALISTS;
+  });
+
+  const [categories, setCategories] = useState<Category[]>(() => {
+    const local = localStorage.getItem('metaranews_categories');
+    return local ? JSON.parse(local) : INITIAL_CATEGORIES;
+  });
 
   // --- Active State ---
   const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
-  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil'>('laporan');
+  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
-  // Sync with Firestore in real-time
+  // Sync to local storage
   useEffect(() => {
-    if (!currentUser) return;
+    localStorage.setItem('metaranews_articles', JSON.stringify(articles));
+  }, [articles]);
 
-    setDbLoading(true);
+  useEffect(() => {
+    localStorage.setItem('metaranews_journalists', JSON.stringify(journalists));
+  }, [journalists]);
 
-    // Listen to journalists
-    const unsubJournalists = onSnapshot(collection(db, "journalists"), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_JOURNALISTS.forEach(async (j) => {
-          await setDoc(doc(db, "journalists", j.id), j);
-        });
-      } else {
-        const list: Journalist[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as Journalist);
-        });
-        setJournalists(list);
-      }
-    });
-
-    // Listen to categories
-    const unsubCategories = onSnapshot(collection(db, "categories"), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_CATEGORIES.forEach(async (c) => {
-          await setDoc(doc(db, "categories", c.id), c);
-        });
-      } else {
-        const list: Category[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as Category);
-        });
-        setCategories(list);
-      }
-    });
-
-    // Listen to articles
-    const unsubArticles = onSnapshot(collection(db, "articles"), (snapshot) => {
-      if (snapshot.empty) {
-        INITIAL_ARTICLES.forEach(async (a) => {
-          await setDoc(doc(db, "articles", a.id), a);
-        });
-      } else {
-        const list: Article[] = [];
-        snapshot.forEach((docSnap) => {
-          list.push(docSnap.data() as Article);
-        });
-        list.sort((a, b) => b.date.localeCompare(a.date));
-        setArticles(list);
-      }
-      setDbLoading(false);
-    });
-
-    return () => {
-      unsubJournalists();
-      unsubCategories();
-      unsubArticles();
-    };
-  }, [currentUser]);
-
-  // Handle Logout
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (e) {
-      console.error("Signout error:", e);
-    }
-    setCurrentUser(null);
-    localStorage.removeItem('metaranews_user');
-  };
-
-  // User initials helper
-  const userInitials = useMemo(() => {
-    if (!currentUser) return 'UN';
-    const parts = currentUser.name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return currentUser.name.slice(0, 2).toUpperCase();
-  }, [currentUser]);
+  useEffect(() => {
+    localStorage.setItem('metaranews_categories', JSON.stringify(categories));
+  }, [categories]);
 
   // --- Calculations for Selected Month ---
   const filteredArticles = useMemo(() => {
@@ -172,26 +95,23 @@ export default function App() {
   }, [filteredArticles]);
 
   // --- Actions ---
-  const handleSaveArticle = async (articleData: Omit<Article, 'id'> & { id?: string }) => {
-    try {
-      if (articleData.id) {
-        await setDoc(doc(db, "articles", articleData.id), { ...articleData, id: articleData.id });
-      } else {
-        const id = `a-${Date.now()}`;
-        await setDoc(doc(db, "articles", id), { ...articleData, id });
-      }
-    } catch (e) {
-      console.error("Error saving article:", e);
+  const handleSaveArticle = (articleData: Omit<Article, 'id'> & { id?: string }) => {
+    if (articleData.id) {
+      // Edit mode
+      setArticles(prev => prev.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art));
+    } else {
+      // Add mode
+      const newArticle: Article = {
+        ...articleData,
+        id: `a-${Date.now()}`
+      } as Article;
+      setArticles(prev => [newArticle, ...prev]);
     }
     setEditingArticle(null);
   };
 
-  const handleDeleteArticle = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "articles", id));
-    } catch (e) {
-      console.error("Error deleting article:", e);
-    }
+  const handleDeleteArticle = (id: string) => {
+    setArticles(prev => prev.filter(a => a.id !== id));
   };
 
   const handleEditArticleTrigger = (article: Article) => {
@@ -200,73 +120,52 @@ export default function App() {
   };
 
   // Add a new journalist to roster
-  const handleAddJournalist = async (name: string, role: Journalist['role']) => {
-    try {
-      const id = `j-${Date.now()}`;
-      await setDoc(doc(db, "journalists", id), { id, name, role });
-    } catch (e) {
-      console.error("Error adding journalist:", e);
-    }
+  const handleAddJournalist = (name: string, role: Journalist['role']) => {
+    const newJurn: Journalist = {
+      id: `j-${Date.now()}`,
+      name,
+      role
+    };
+    setJournalists(prev => [...prev, newJurn]);
   };
 
-  const handleDeleteJournalist = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "journalists", id));
-    } catch (e) {
-      console.error("Error deleting journalist:", e);
-    }
+  const handleDeleteJournalist = (id: string) => {
+    setJournalists(prev => prev.filter(j => j.id !== id));
   };
 
-  const handleEditJournalist = async (id: string, name: string, role: Journalist['role']) => {
+  const handleEditJournalist = (id: string, name: string, role: Journalist['role']) => {
     const oldJurn = journalists.find(j => j.id === id);
     const oldName = oldJurn ? oldJurn.name : '';
 
-    try {
-      await setDoc(doc(db, "journalists", id), { id, name, role });
+    setJournalists(prev => prev.map(j => j.id === id ? { ...j, name, role } : j));
 
-      if (oldName && oldName !== name) {
-        const querySnapshot = await getDocs(collection(db, "articles"));
-        querySnapshot.forEach(async (docSnap) => {
-          const art = docSnap.data() as Article;
-          let updated = false;
-          const uArt = { ...art };
-          if (uArt.reporter === oldName) { uArt.reporter = name; updated = true; }
-          if (uArt.writer === oldName) { uArt.writer = name; updated = true; }
-          if (uArt.documenter === oldName) { uArt.documenter = name; updated = true; }
-          if (updated) {
-            await setDoc(doc(db, "articles", art.id), uArt);
-          }
-        });
-      }
-    } catch (e) {
-      console.error("Error editing journalist:", e);
+    if (oldName && oldName !== name) {
+      setArticles(prev => prev.map(art => {
+        const updated = { ...art };
+        if (updated.reporter === oldName) updated.reporter = name;
+        if (updated.writer === oldName) updated.writer = name;
+        if (updated.documenter === oldName) updated.documenter = name;
+        return updated;
+      }));
     }
   };
 
   // Add a new news category
-  const handleAddCategory = async (name: string, color: string) => {
-    try {
-      const id = name.trim().toLowerCase().replace(/\s+/g, '-');
-      await setDoc(doc(db, "categories", id), { id, name, color });
-    } catch (e) {
-      console.error("Error adding category:", e);
-    }
+  const handleAddCategory = (name: string, color: string) => {
+    const newCat: Category = {
+      id: name.trim().toLowerCase().replace(/\s+/g, '-'),
+      name,
+      color
+    };
+    setCategories(prev => [...prev, newCat]);
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "categories", id));
-    } catch (e) {
-      console.error("Error deleting category:", e);
-    }
+  const handleDeleteCategory = (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
   };
 
-  const handleEditCategory = async (id: string, name: string, color: string) => {
-    try {
-      await setDoc(doc(db, "categories", id), { id, name, color });
-    } catch (e) {
-      console.error("Error editing category:", e);
-    }
+  const handleEditCategory = (id: string, name: string, color: string) => {
+    setCategories(prev => prev.map(c => c.id === id ? { ...c, name, color } : c));
   };
 
   // Helper for Month labels formatting
@@ -306,17 +205,6 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  if (!currentUser) {
-    return (
-      <LoginScreen 
-        onLoginSuccess={(profile) => {
-          setCurrentUser(profile);
-          localStorage.setItem('metaranews_user', JSON.stringify(profile));
-        }} 
-      />
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 antialiased font-sans flex flex-col justify-between" id="applet-viewport">
       {/* --- UPPER DECK: NAVIGATION MASTHEAD --- */}
@@ -332,35 +220,21 @@ export default function App() {
               <div>
                 <div className="flex items-center gap-1.5 leading-none">
                   <span className="font-extrabold text-slate-900 text-md tracking-tight">metaranews</span>
-                  <span className="text-sky-600 font-extrabold text-[9px] px-1.5 py-0.5 rounded-sm bg-sky-50 border border-sky-200 uppercase">
-                    {currentUser.role}
-                  </span>
+                  <span className="text-sky-600 font-extrabold text-[9px] px-1.5 py-0.5 rounded-sm bg-sky-50 border border-sky-200">ADMIN</span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-semibold tracking-wide">Sistem Kinerja & Produktivitas Jurnalis</span>
               </div>
             </div>
 
-            {/* Quick Profile context info & Logout */}
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-3 border-l border-slate-150 pl-4 py-1">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-black text-xs border border-slate-200 select-none uppercase">
-                  {userInitials}
-                </div>
-                <div className="text-left">
-                  <div className="text-xs font-semibold text-slate-850">{currentUser.name}</div>
-                  <div className="text-[9px] text-slate-400 font-bold">{currentUser.email}</div>
-                </div>
+            {/* Quick Profile context info */}
+            <div className="hidden sm:flex items-center gap-3 border-l border-slate-150 pl-4 py-1">
+              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs border border-slate-200 select-none">
+                RD
               </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-105 active:scale-98 text-[10px] sm:text-xs font-extrabold text-slate-500 hover:text-rose-600 transition-all flex items-center gap-1.5 cursor-pointer ml-2"
-                id="btn-logout"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Keluar</span>
-              </button>
+              <div className="text-left">
+                <div className="text-xs font-semibold text-slate-850">Redaktur Pelaksana</div>
+                <div className="text-[9px] text-slate-400 font-bold">metaranews.co</div>
+              </div>
             </div>
 
           </div>
@@ -470,18 +344,6 @@ export default function App() {
               >
                 <Settings className="w-4 h-4" />
                 Kru Jurnalis & Rubrik
-              </button>
-              <button
-                onClick={() => setActiveTab('personil')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  activeTab === 'personil'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
-                id="tab-personil-btn"
-              >
-                <Users className="w-4 h-4" />
-                Manajemen Personil & Hak Akses
               </button>
             </nav>
           </div>
@@ -736,17 +598,6 @@ export default function App() {
                 onEditCategory={handleEditCategory}
               />
             </div>
-          )}
-
-          {/* --- TAB CONTENT 4: MANAJEMEN PERSONIL & HAK AKSES --- */}
-          {activeTab === 'personil' && (
-            <PersonnelPanel 
-              currentUser={currentUser} 
-              onProfileUpdated={(updatedProfile) => {
-                setCurrentUser(updatedProfile);
-                localStorage.setItem('metaranews_user', JSON.stringify(updatedProfile));
-              }}
-            />
           )}
 
         </div>
