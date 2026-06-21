@@ -289,12 +289,13 @@ export default function App() {
   };
 
   // Add a new journalist to roster
-  const handleAddJournalist = async (name: string, role: Journalist['role']) => {
+  const handleAddJournalist = async (name: string, role: Journalist['role'], coverage: string) => {
     try {
       const newJurn: Journalist = {
         id: `j-${Date.now()}`,
         name,
-        role
+        role,
+        coverage
       };
       setJournalists(prev => [...prev, newJurn]);
       await setDoc(doc(db, 'journalists', newJurn.id), newJurn);
@@ -312,13 +313,13 @@ export default function App() {
     }
   };
 
-  const handleEditJournalist = async (id: string, name: string, role: Journalist['role']) => {
+  const handleEditJournalist = async (id: string, name: string, role: Journalist['role'], coverage: string) => {
     try {
       const oldJurn = journalists.find(j => j.id === id);
       const oldName = oldJurn ? oldJurn.name : '';
 
-      setJournalists(prev => prev.map(j => j.id === id ? { ...j, name, role } : j));
-      await setDoc(doc(db, 'journalists', id), { id, name, role });
+      setJournalists(prev => prev.map(j => j.id === id ? { ...j, name, role, coverage } : j));
+      await setDoc(doc(db, 'journalists', id), { id, name, role, coverage });
 
       if (oldName && oldName !== name) {
         const updatedArticles = articles.map(art => {

@@ -10,9 +10,9 @@ import { Plus, Trash2, Users, Tag, CheckCircle, Pencil } from 'lucide-react';
 interface ManagementPanelProps {
   journalists: Journalist[];
   categories: Category[];
-  onAddJournalist: (name: string, role: Journalist['role']) => void;
+  onAddJournalist: (name: string, role: Journalist['role'], coverage: string) => void;
   onDeleteJournalist: (id: string) => void;
-  onEditJournalist: (id: string, name: string, role: Journalist['role']) => void;
+  onEditJournalist: (id: string, name: string, role: Journalist['role'], coverage: string) => void;
   onAddCategory: (name: string, color: string) => void;
   onDeleteCategory: (id: string) => void;
   onEditCategory: (id: string, name: string, color: string) => void;
@@ -31,6 +31,7 @@ export default function ManagementPanel({
   // States for Journalist Form
   const [jName, setJName] = useState('');
   const [jRole, setJRole] = useState<Journalist['role']>('Reporter');
+  const [jCoverage, setJCoverage] = useState('Tidak Ada');
   const [jError, setJError] = useState('');
   const [jSuccess, setJSuccess] = useState(false);
 
@@ -44,6 +45,7 @@ export default function ManagementPanel({
   const [editingJId, setEditingJId] = useState<string | null>(null);
   const [editingJName, setEditingJName] = useState('');
   const [editingJRole, setEditingJRole] = useState<Journalist['role']>('Reporter');
+  const [editingJCoverage, setEditingJCoverage] = useState('Tidak Ada');
   const [editingJError, setEditingJError] = useState('');
 
   const [editingCId, setEditingCId] = useState<string | null>(null);
@@ -80,8 +82,9 @@ export default function ManagementPanel({
       return;
     }
 
-    onAddJournalist(jName.trim(), jRole);
+    onAddJournalist(jName.trim(), jRole, jCoverage);
     setJName('');
+    setJCoverage('Tidak Ada');
     setJSuccess(true);
     setTimeout(() => setJSuccess(false), 3000);
   };
@@ -121,7 +124,7 @@ export default function ManagementPanel({
       return;
     }
 
-    onEditJournalist(id, editingJName.trim(), editingJRole);
+    onEditJournalist(id, editingJName.trim(), editingJRole, editingJCoverage);
     setEditingJId(null);
   };
 
@@ -129,6 +132,7 @@ export default function ManagementPanel({
     setEditingJId(jurn.id);
     setEditingJName(jurn.name);
     setEditingJRole(jurn.role);
+    setEditingJCoverage(jurn.coverage || 'Tidak Ada');
     setEditingJError('');
   };
 
@@ -198,7 +202,7 @@ export default function ManagementPanel({
               <select
                 value={jRole}
                 onChange={(e) => setJRole(e.target.value as Journalist['role'])}
-                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium"
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium animate-none"
                 id="add-journalist-role"
               >
                 <option value="Reporter">Reporter (Lapangan)</option>
@@ -206,6 +210,18 @@ export default function ManagementPanel({
                 <option value="Fotografer">Fotografer (Dokumentasi)</option>
                 <option value="Kontributor">Kontributor (Eksternal)</option>
                 <option value="Magang">Magang (Intern)</option>
+              </select>
+              <select
+                value={jCoverage}
+                onChange={(e) => setJCoverage(e.target.value)}
+                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-705 font-medium"
+                id="add-journalist-coverage"
+                title="Sektor Liputan / Penugasan Khusus"
+              >
+                <option value="Tidak Ada">Cover: Tidak Ada / Semua</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.name}>Cover: {c.name}</option>
+                ))}
               </select>
               <button
                 type="submit"
@@ -250,6 +266,16 @@ export default function ManagementPanel({
                         <option value="Kontributor">Kontributor</option>
                         <option value="Magang">Magang</option>
                       </select>
+                      <select
+                        value={editingJCoverage}
+                        onChange={(e) => setEditingJCoverage(e.target.value)}
+                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-20 bg-white text-slate-800 font-medium"
+                      >
+                        <option value="Tidak Ada">Cover: Tidak Ada / Semua</option>
+                        {categories.map(c => (
+                          <option key={c.id} value={c.name}>Cover: {c.name}</option>
+                        ))}
+                      </select>
                     </div>
                     {editingJError && <p className="text-[10px] font-bold text-red-600 mt-1">{editingJError}</p>}
                     <div className="flex justify-end gap-1.5">
@@ -272,7 +298,14 @@ export default function ManagementPanel({
                 ) : (
                   <div className="flex items-center justify-between p-2.5 bg-slate-50/40 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
                     <div>
-                      <span className="text-xs font-bold text-slate-800 block leading-tight">{jurn.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800 block leading-tight">{jurn.name}</span>
+                        {jurn.coverage && jurn.coverage !== 'Tidak Ada' && (
+                          <span className="px-1.5 py-0.2 text-[8px] font-black uppercase text-sky-700 bg-sky-50 border border-sky-200 rounded">
+                            {jurn.coverage}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">{jurn.role}</span>
                     </div>
                     <div className="flex items-center gap-1">

@@ -21,6 +21,7 @@ export interface Journalist {
   id: string;
   name: string;
   role: 'Reporter' | 'Redaktur' | 'Fotografer' | 'Kontributor' | 'Magang';
+  coverage?: string;
 }
 
 export interface Category {
