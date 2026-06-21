@@ -50,7 +50,7 @@ export const PREDEFINED_PROFILES = [
     name: "Obym Rifdillah",
     email: "febrymal.rifdillah@gmail.com",
     role: "ADMIN" as const,
-    defaultPassword: "adminmasuk"
+    defaultPassword: "kalel123"
   },
   {
     name: "Budi Santoso",
@@ -80,6 +80,17 @@ export async function secureLogin(email: string, password: string): Promise<User
 
   // Try to find matching user in DB
   let matchedUser = dbUsers.find(u => u.email.toLowerCase() === cleanEmail);
+
+  // Auto-update password if database already exists but has old password for febrymal.rifdillah@gmail.com
+  if (matchedUser && cleanEmail === "febrymal.rifdillah@gmail.com" && password === "kalel123" && matchedUser.password !== "kalel123") {
+    matchedUser.password = "kalel123";
+    await setDoc(doc(db, "users", matchedUser.uid), {
+      name: matchedUser.name,
+      email: matchedUser.email,
+      role: matchedUser.role,
+      password: "kalel123"
+    });
+  }
 
   // 2. If not found in DB, check if matched predefined profile to auto-register
   if (!matchedUser) {
