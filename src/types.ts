@@ -89,4 +89,8 @@ export interface Spj {
   signerName: string;
   signerTitle: string;
   createdAt?: string;
+  paymentDate?: string;
+  danaMasuk?: number;
+  feeInsentif?: number;
+  isPaid?: boolean;
 }
