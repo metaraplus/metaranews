@@ -957,14 +957,14 @@ export default function SpjCreator() {
                                       <path id="stampFooterPath" d="M 82 50 A 32 32 0 0 1 18 50" />
                                     </defs>
                                     
-                                    <text font-family="sans-serif" font-weight="950" font-size="6.2px" fill="currentColor" letter-spacing="0.3">
-                                      <textPath href="#stampHeaderPath" startOffset="50%" text-anchor="middle">
+                                    <text fontFamily="sans-serif" fontWeight="950" fontSize="6.2px" fill="currentColor" letterSpacing="0.3">
+                                      <textPath href="#stampHeaderPath" startOffset="50%" textAnchor="middle">
                                         PT. PORTAL DIGITAL MEDIA NUSANTARA
                                       </textPath>
                                     </text>
 
-                                    <text font-family="sans-serif" font-weight="950" font-size="6.8px" fill="currentColor">
-                                      <textPath href="#stampFooterPath" startOffset="50%" text-anchor="middle">
+                                    <text fontFamily="sans-serif" fontWeight="950" fontSize="6.8px" fill="currentColor">
+                                      <textPath href="#stampFooterPath" startOffset="50%" textAnchor="middle">
                                         * KABUPATEN KEDIRI *
                                       </textPath>
                                     </text>
@@ -973,11 +973,11 @@ export default function SpjCreator() {
                                     <g transform="translate(37.5, 30) scale(0.25)" strokeWidth="8" fill="none" stroke="currentColor">
                                       <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
                                       <path d="M50,45 L50,80" />
-                                      <circle cx="50" cy="50" r="12" stroke-dasharray="3" />
+                                      <circle cx="50" cy="50" r="12" strokeDasharray="3" />
                                     </g>
                                     
                                     {/* Division cross name block */}
-                                    <text x="50" y="65" font-family="sans-serif" font-weight="950" font-size="6px" fill="currentColor" text-anchor="middle" letter-spacing="0.5">
+                                    <text x="50" y="65" fontFamily="sans-serif" fontWeight="950" fontSize="6px" fill="currentColor" textAnchor="middle" letterSpacing="0.5">
                                       METARANEWS
                                     </text>
                                   </svg>
