@@ -796,7 +796,7 @@ export default function SpjCreator() {
                 </div>
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
-                <div className="hidden print:block fixed bottom-0 left-0 right-0 h-[60px] bg-white z-[100] pointer-events-none">
+                <div className="hidden print:block fixed bottom-0 left-0 right-0 bg-transparent z-[100] pointer-events-none">
                   {renderFooterStripping()}
                 </div>
 
