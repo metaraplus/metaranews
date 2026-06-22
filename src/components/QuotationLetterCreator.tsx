@@ -356,6 +356,79 @@ export default function QuotationLetterCreator() {
     window.print();
   };
 
+  const renderKopSurat = () => (
+    <div className="flex justify-between items-start border-b-2 border-red-600 pb-4 relative z-10 w-full">
+      {/* Top Left: METARA SIGNAL LOGO RECONSTRUCTION */}
+      <div className="flex items-start gap-4">
+        {/* Logo container */}
+        <div className="flex flex-col items-center">
+          {/* Red Signal Emblem */}
+          <div className="w-[62px] h-[62px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
+            {/* Inside white stylized 'M' curve line */}
+            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+              <path d="M50,45 L50,80" />
+            </svg>
+            {/* Top antenna signals antenna circles radiating */}
+            <div className="absolute -top-3 left-[17px] right-[17px] flex flex-col items-center">
+              {/* concentric signal circles */}
+              <div className="w-[28px] h-[28px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
+                <div className="w-[18px] h-[18px] rounded-full border-1.5 border-white relative flex items-center justify-center">
+                  <span className="w-1.5 h-1.5 bg-yellow-300 rounded-full"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Metara wordmark */}
+          <div className="text-center mt-1.5 leading-none">
+            <span className="font-extrabold text-[#CC0000] text-[18px] tracking-tighter block uppercase">Metara</span>
+            <span className="text-slate-800 font-black text-[7.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
+            <span className="text-[5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
+          </div>
+        </div>
+      </div>
+      {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA and contact head */}
+      <div className="text-right flex-1 pl-4">
+        <h2 className="text-[#CC0000] font-black text-[20px] leading-tight uppercase font-sans tracking-tight">
+          PT. PORTAL DIGITAL MEDIA NUSANTARA
+        </h2>
+        <div className="text-slate-650 text-[10px] space-y-0.5 mt-2 font-medium">
+          <p className="leading-tight text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
+          <p className="leading-tight text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
+          <p className="leading-tight text-[#CC0000] font-bold font-sans">Telp. 0354-4545845 - +62 811-3500-466</p>
+        </div>
+      </div>
+      {/* Top-Right Curve corner box block matching image */}
+      <div className="absolute top-[-18mm] right-[-18mm] w-[50px] h-[55px] bg-[#CC0000] rounded-bl-3xl"></div>
+    </div>
+  );
+
+  const renderFooterStripping = () => (
+    <div className="relative overflow-visible w-full">
+      {/* Tiny signal antenna tower logo printed in the lower right bottom corner exactly like image */}
+      <div className="absolute right-[18mm] bottom-[15px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible">
+        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
+          {/* Red Antenna graphic waves */}
+          <div className="w-[32px] h-[32px] rounded-full bg-[#CC0000] flex items-center justify-center relative shadow-3xs text-white">
+            {/* waves concentric path */}
+            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+              <path d="M50,45 L50,80" />
+            </svg>
+            {/* Outer wave rings */}
+            <div className="absolute -top-2 left-[8px] right-[8px] flex flex-col items-center">
+              <div className="w-[18px] h-[18px] rounded-full border border-white border-dashed relative flex items-center justify-center">
+                <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Bottom Red strip band matching attached picture */}
+      <div className="w-full h-8 bg-[#CC0000]"></div>
+    </div>
+  );
+
   // Filter list by recipient or reference query
   const filteredQuotations = quotations.filter(q => {
     const term = searchQuery.toLowerCase();
@@ -841,236 +914,205 @@ export default function QuotationLetterCreator() {
               {/* Actual paper dimensions structured in CSS */}
               <div 
                 id="print-section"
-                className="w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[18mm] relative text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between shrink-0"
+                className="w-[210mm] min-h-[297mm] bg-white shadow-2xl p-[18mm] relative text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between print:block shrink-0"
                 style={{ contentVisibility: 'auto' }}
               >
                 
-                {/* --- HEADER LOGO & KOP SURAT --- */}
-                <div>
-                  <div className="flex justify-between items-start border-b-2 border-red-600 pb-4 relative z-10">
-                    
-                    {/* Top Left: METARA SIGNAL LOGO RECONSTRUCTION */}
-                    <div className="flex items-start gap-4">
-                      {/* Logo container */}
-                      <div className="flex flex-col items-center">
-                        {/* Red Signal Emblem */}
-                        <div className="w-[62px] h-[62px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
-                          
-                          {/* Inside white stylized 'M' curve line */}
-                          <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                            <path d="M50,45 L50,80" />
-                          </svg>
+                {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
+                <div className="hidden print:block fixed top-0 left-0 right-0 h-[140px] pt-[18mm] px-[18mm] bg-white z-[100] pointer-events-none">
+                  {renderKopSurat()}
+                </div>
 
-                          {/* Top antenna signals antenna circles radiating */}
-                          <div className="absolute -top-3 left-[17px] right-[17px] flex flex-col items-center">
-                            {/* concentric signal circles */}
-                            <div className="w-[28px] h-[28px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
-                              <div className="w-[18px] h-[18px] rounded-full border-1.5 border-white relative flex items-center justify-center">
-                                <span className="w-1.5 h-1.5 bg-yellow-300 rounded-full"></span>
+                {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
+                <div className="hidden print:block fixed bottom-0 left-0 right-0 h-[60px] bg-white z-[100] pointer-events-none">
+                  {renderFooterStripping()}
+                </div>
+
+                {/* --- MAIN PAGE TABULAR CONTAINER --- */}
+                <table className="w-full border-collapse border-none m-0 p-0 relative z-10">
+                  {/* Table Header Space Reservation */}
+                  <thead>
+                    <tr className="border-none m-0 p-0">
+                      <td className="p-0 border-none m-0">
+                        <div className="hidden print:block h-[120px] w-full" />
+                      </td>
+                    </tr>
+                  </thead>
+
+                  {/* Core Letter Body flow */}
+                  <tbody>
+                    <tr className="border-none m-0 p-0">
+                      <td className="p-0 border-none m-0 text-left">
+                        <div className="relative">
+                          
+                          {/* SCREEN-ONLY (Live Preview Mode) HEADER LOGO & KOP SURAT */}
+                          <div className="print:hidden">
+                            {renderKopSurat()}
+                          </div>
+
+                          {/* --- SUBTLE CENTER WATERMARK BACKGROUND --- */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                            <div className="w-[420px] h-[420px] rounded-full bg-[#CC0000]/[0.025] border-2 border-[#CC0000]/[0.02] flex items-center justify-center relative scale-110">
+                              {/* Stylized M inside watermark */}
+                              <svg viewBox="0 0 100 100" className="w-[75%] h-[75%] fill-none stroke-[#CC0000]/[0.015]" strokeWidth="6" strokeLinecap="round">
+                                <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+                                <path d="M50,45 L50,80" />
+                              </svg>
+                              {/* Antenna circles */}
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-16 h-16 rounded-full border-2 border-dashed border-[#CC0000]/[0.015]"></div>
+                            </div>
+                          </div>
+
+                          {/* --- DOCUMENT INFORMATION HEADER (No Surat, Lampiran, Hal) --- */}
+                          <div className="mt-8 grid grid-cols-12 gap-2 text-xs relative z-10 text-slate-800">
+                            <div className="col-span-8 space-y-1">
+                              <div className="flex">
+                                <span className="w-20 font-bold block shrink-0 text-slate-600">Nomor</span>
+                                <span className="w-4 text-center">:</span>
+                                <strong className="font-mono text-slate-850 font-semibold">{selectedQuote.letterNumber}</strong>
+                              </div>
+                              <div className="flex">
+                                <span className="w-20 font-bold block shrink-0 text-slate-600">Lampiran</span>
+                                <span className="w-4 text-center">:</span>
+                                <span className="text-slate-800">{selectedQuote.attachments || '-'}</span>
+                              </div>
+                              <div className="flex align-top">
+                                <span className="w-20 font-bold block shrink-0 text-slate-600">Perihal</span>
+                                <span className="w-4 text-center shrink-0">:</span>
+                                <u className="font-extrabold text-slate-900 leading-tight block">{selectedQuote.subject}</u>
+                              </div>
+                            </div>
+
+                            <div className="col-span-4 text-right">
+                              <span className="text-slate-800 font-bold whitespace-nowrap block">
+                                Kediri, {formatIndonesianDate(selectedQuote.date)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* --- RECIPIENT BLOCK (Kepada Yth.) --- */}
+                          <div className="mt-7 text-xs space-y-1 text-slate-800 relative z-10 leading-relaxed max-w-[80%]">
+                            <p className="font-semibold text-slate-500">Kepada Yang Terhormat,</p>
+                            <p className="font-black text-slate-900 text-[13px]">{selectedQuote.recipientName}</p>
+                            <p className="font-semibold text-slate-700">{selectedQuote.recipientTitle}</p>
+                            <p className="font-black text-slate-800 uppercase text-[11px] font-sans">{selectedQuote.recipientCompany}</p>
+                            <p className="text-slate-600 italic leading-snug">{selectedQuote.recipientAddress}</p>
+                          </div>
+
+                          {/* --- BODY OPENING --- */}
+                          <div className="mt-7 text-xs text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
+                            {selectedQuote.bodyOpening}
+                          </div>
+
+                          {/* --- PRICE PROPOSAL TABLE --- */}
+                          {selectedQuote.items.length > 0 && (
+                            <div className="mt-6 relative z-10">
+                              <table className="w-full border-collapse border border-slate-300 text-[11px] leading-relaxed shadow-3xs rounded-md overflow-hidden text-slate-800 font-sans">
+                                <thead>
+                                  <tr className="bg-[#CC0000] text-white text-center font-extrabold uppercase tracking-wide">
+                                    <th className="border border-slate-300 py-2.5 px-2 w-[5%]">No</th>
+                                    <th className="border border-slate-300 py-2.5 px-3 w-[40%] text-left">Nama Program / Paket Layanan</th>
+                                    <th className="border border-slate-300 py-2.5 px-2 w-[15%]">Volume</th>
+                                    <th className="border border-slate-300 py-2.5 px-3 w-[18%] text-right">Harga Satuan</th>
+                                    <th className="border border-slate-300 py-2.5 px-3 w-[22%] text-right">Jumlah Total (Rp)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedQuote.items.map((item, index) => (
+                                    <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                      <td className="border border-slate-200 py-2.5 text-center font-bold font-mono">{index + 1}</td>
+                                      <td className="border border-slate-200 py-2.5 px-3 text-left">
+                                        <div className="font-black text-slate-900 text-xs">{item.name}</div>
+                                        {item.description && (
+                                          <div className="text-[10px] text-slate-500 font-medium leading-snug mt-0.5">{item.description}</div>
+                                        )}
+                                      </td>
+                                      <td className="border border-slate-200 py-2.5 text-center font-semibold font-mono">
+                                        {item.quantity} {item.unit}
+                                      </td>
+                                      <td className="border border-slate-200 py-2.5 px-3 text-right font-mono font-medium">
+                                        {formatRupiah(item.price)}
+                                      </td>
+                                      <td className="border border-slate-200 py-2.5 px-3 text-right font-mono font-bold text-slate-900">
+                                        {formatRupiah(item.quantity * item.price)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                  
+                                  {/* Financial Summaries layout inside table */}
+                                  <tr className="bg-slate-100 font-bold">
+                                    <td colSpan={4} className="border border-slate-200 py-2 px-3 text-right text-slate-600 uppercase tracking-wider text-[10px] font-extrabold">Subtotal Biaya Penawaran</td>
+                                    <td className="border border-slate-200 py-2 px-3 text-right font-mono text-slate-900 text-xs">{formatRupiah(getSubtotal())}</td>
+                                  </tr>
+                                  {selectedQuote.showVat && (
+                                    <tr className="bg-slate-100 font-bold">
+                                      <td colSpan={4} className="border border-slate-200 py-2 px-3 text-right text-slate-600 uppercase tracking-wider text-[10px] font-extrabold">Pajak PPN ({selectedQuote.vatPercent}%)</td>
+                                      <td className="border border-slate-200 py-2 px-3 text-right font-mono text-slate-900 text-xs">{formatRupiah(getTax())}</td>
+                                    </tr>
+                                  )}
+                                  <tr className="bg-slate-200/80 font-black text-slate-900">
+                                    <td colSpan={4} className="border border-slate-200 py-2.5 px-3 text-right uppercase tracking-wider text-[10.5px]">Total Penawaran Akhir (Nett)</td>
+                                    <td className="border border-slate-200 py-2.5 px-3 text-right font-mono text-[#CC0000] text-sm">{formatRupiah(getGrandTotal())}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {/* --- BODY CLOSING --- */}
+                          <div className="mt-6 text-xs text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
+                            {selectedQuote.bodyClosing}
+                          </div>
+
+                          {/* --- FOOTER BLOCK: SIGNATURE PANEL --- */}
+                          <div className="mt-12 relative z-10">
+                            <div className="grid grid-cols-12 gap-4 text-xs font-sans text-slate-800">
+                              <div className="col-span-7">
+                                {/* Optional notes area */}
+                                <p className="text-[10px] text-slate-400 font-medium italic block mt-1 leading-normal max-w-[85%]">
+                                  * Penawaran ini bersifat mengikat selama 30 hari kalender sejak diterbitkan dan dapat diturunkan ke perjanjian nota kesepahaman (MOU).
+                                </p>
+                              </div>
+
+                              <div className="col-span-5 text-center flex flex-col justify-end space-y-1">
+                                <p className="font-extrabold text-slate-900 uppercase tracking-wide leading-none">Hormat Kami,</p>
+                                <p className="font-bold text-slate-700 block leading-none">PT. Portal Digital Media Nusantara</p>
+                                
+                                {/* Reserved space for manual signature and actual physical wet stamp */}
+                                <div className="h-20 w-44 mx-auto relative select-none shrink-0" />
+
+                                {/* Line Name and title */}
+                                <div className="space-y-0.5">
+                                  <strong className="text-slate-900 font-black text-xs block uppercase underline leading-none">
+                                    {selectedQuote.signerName}
+                                  </strong>
+                                  <span className="text-slate-500 font-bold block text-[10px] leading-tight mt-0.5">
+                                    {selectedQuote.signerTitle}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Metara wordmark */}
-                        <div className="text-center mt-1.5 leading-none">
-                          <span className="font-extrabold text-[#CC0000] text-[18px] tracking-tighter block uppercase">Metara</span>
-                          <span className="text-slate-800 font-black text-[7.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
-                          <span className="text-[5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA and contact head */}
-                    <div className="text-right flex-1 pl-4">
-                      <h2 className="text-[#CC0000] font-black text-[20px] leading-tight uppercase font-sans tracking-tight">
-                        PT. PORTAL DIGITAL MEDIA NUSANTARA
-                      </h2>
-                      <div className="text-slate-650 text-[10px] space-y-0.5 mt-2 font-medium">
-                        <p className="leading-tight text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
-                        <p className="leading-tight text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
-                        <p className="leading-tight text-[#CC0000] font-bold">Telp. 0354-4545845 - +62 811-3500-466</p>
-                      </div>
-                    </div>
-
-                    {/* Top-Right Curve corner box block matching image */}
-                    <div className="absolute top-[-18mm] right-[-18mm] w-[50px] h-[55px] bg-[#CC0000] rounded-bl-3xl"></div>
-                  </div>
-
-                  {/* --- SUBTLE CENTER WATERMARK BACKGROUND --- */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                    <div className="w-[420px] h-[420px] rounded-full bg-[#CC0000]/[0.025] border-2 border-[#CC0000]/[0.02] flex items-center justify-center relative scale-110">
-                      {/* Stylized M inside watermark */}
-                      <svg viewBox="0 0 100 100" className="w-[75%] h-[75%] fill-none stroke-[#CC0000]/[0.015]" strokeWidth="6" strokeLinecap="round">
-                        <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                        <path d="M50,45 L50,80" />
-                      </svg>
-                      {/* Antenna circles */}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-16 h-16 rounded-full border-2 border-dashed border-[#CC0000]/[0.015]"></div>
-                    </div>
-                  </div>
-
-                  {/* --- DOCUMENT INFORMATION HEADER (No Surat, Lampiran, Hal) --- */}
-                  <div className="mt-8 grid grid-cols-12 gap-2 text-xs relative z-10 text-slate-800">
-                    <div className="col-span-8 space-y-1">
-                      <div className="flex">
-                        <span className="w-20 font-bold block shrink-0 text-slate-600">Nomor</span>
-                        <span className="w-4 text-center">:</span>
-                        <strong className="font-mono text-slate-850 font-semibold">{selectedQuote.letterNumber}</strong>
-                      </div>
-                      <div className="flex">
-                        <span className="w-20 font-bold block shrink-0 text-slate-600">Lampiran</span>
-                        <span className="w-4 text-center">:</span>
-                        <span className="text-slate-800">{selectedQuote.attachments || '-'}</span>
-                      </div>
-                      <div className="flex align-top">
-                        <span className="w-20 font-bold block shrink-0 text-slate-600">Perihal</span>
-                        <span className="w-4 text-center shrink-0">:</span>
-                        <u className="font-extrabold text-slate-900 leading-tight block">{selectedQuote.subject}</u>
-                      </div>
-                    </div>
-
-                    <div className="col-span-4 text-right">
-                      <span className="text-slate-800 font-bold whitespace-nowrap block">
-                        Kediri, {formatIndonesianDate(selectedQuote.date)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* --- RECIPIENT BLOCK (Kepada Yth.) --- */}
-                  <div className="mt-7 text-xs space-y-1 text-slate-800 relative z-10 leading-relaxed max-w-[80%]">
-                    <p className="font-semibold text-slate-500">Kepada Yang Terhormat,</p>
-                    <p className="font-black text-slate-900 text-[13px]">{selectedQuote.recipientName}</p>
-                    <p className="font-semibold text-slate-700">{selectedQuote.recipientTitle}</p>
-                    <p className="font-black text-slate-800 uppercase text-[11px] font-sans">{selectedQuote.recipientCompany}</p>
-                    <p className="text-slate-600 italic leading-snug">{selectedQuote.recipientAddress}</p>
-                  </div>
-
-                  {/* --- BODY OPENING --- */}
-                  <div className="mt-7 text-xs text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
-                    {selectedQuote.bodyOpening}
-                  </div>
-
-                  {/* --- PRICE PROPOSAL TABLE --- */}
-                  {selectedQuote.items.length > 0 && (
-                    <div className="mt-6 relative z-10">
-                      <table className="w-full border-collapse border border-slate-300 text-[11px] leading-relaxed shadow-3xs rounded-md overflow-hidden text-slate-800 font-sans">
-                        <thead>
-                          <tr className="bg-[#CC0000] text-white text-center font-extrabold uppercase tracking-wide">
-                            <th className="border border-slate-300 py-2.5 px-2 w-[5%]">No</th>
-                            <th className="border border-slate-300 py-2.5 px-3 w-[40%] text-left">Nama Program / Paket Layanan</th>
-                            <th className="border border-slate-300 py-2.5 px-2 w-[15%]">Volume</th>
-                            <th className="border border-slate-300 py-2.5 px-3 w-[18%] text-right">Harga Satuan</th>
-                            <th className="border border-slate-300 py-2.5 px-3 w-[22%] text-right">Jumlah Total (Rp)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selectedQuote.items.map((item, index) => (
-                            <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                              <td className="border border-slate-200 py-2.5 text-center font-bold font-mono">{index + 1}</td>
-                              <td className="border border-slate-200 py-2.5 px-3 text-left">
-                                <div className="font-black text-slate-900 text-xs">{item.name}</div>
-                                {item.description && (
-                                  <div className="text-[10px] text-slate-500 font-medium leading-snug mt-0.5">{item.description}</div>
-                                )}
-                              </td>
-                              <td className="border border-slate-200 py-2.5 text-center font-semibold font-mono">
-                                {item.quantity} {item.unit}
-                              </td>
-                              <td className="border border-slate-200 py-2.5 px-3 text-right font-mono font-medium">
-                                {formatRupiah(item.price)}
-                              </td>
-                              <td className="border border-slate-200 py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                                {formatRupiah(item.quantity * item.price)}
-                              </td>
-                            </tr>
-                          ))}
-                          
-                          {/* Financial Summaries layout inside table */}
-                          <tr className="bg-slate-100 font-bold">
-                            <td colSpan={4} className="border border-slate-200 py-2 px-3 text-right text-slate-600 uppercase tracking-wider text-[10px] font-extrabold">Subtotal Biaya Penawaran</td>
-                            <td className="border border-slate-200 py-2 px-3 text-right font-mono text-slate-900 text-xs">{formatRupiah(getSubtotal())}</td>
-                          </tr>
-                          {selectedQuote.showVat && (
-                            <tr className="bg-slate-100 font-bold">
-                              <td colSpan={4} className="border border-slate-200 py-2 px-3 text-right text-slate-600 uppercase tracking-wider text-[10px] font-extrabold">Pajak PPN ({selectedQuote.vatPercent}%)</td>
-                              <td className="border border-slate-200 py-2 px-3 text-right font-mono text-slate-900 text-xs">{formatRupiah(getTax())}</td>
-                            </tr>
-                          )}
-                          <tr className="bg-slate-200/80 font-black text-slate-900">
-                            <td colSpan={4} className="border border-slate-200 py-2.5 px-3 text-right uppercase tracking-wider text-[10.5px]">Total Penawaran Akhir (Nett)</td>
-                            <td className="border border-slate-200 py-2.5 px-3 text-right font-mono text-[#CC0000] text-sm">{formatRupiah(getGrandTotal())}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {/* --- BODY CLOSING --- */}
-                  <div className="mt-6 text-xs text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
-                    {selectedQuote.bodyClosing}
-                  </div>
-                </div>
-
-                {/* --- FOOTER BLOCK: SIGNATURE PANEL & CORNER LOGO WAVES --- */}
-                <div className="mt-12 relative z-10">
-                  <div className="grid grid-cols-12 gap-4 text-xs font-sans text-slate-800">
-                    <div className="col-span-7">
-                      {/* Optional notes area */}
-                      <p className="text-[10px] text-slate-400 font-medium italic block mt-1 leading-normal max-w-[85%]">
-                        * Penawaran ini bersifat mengikat selama 30 hari kalender sejak diterbitkan dan dapat diturunkan ke perjanjian nota kesepahaman (MOU).
-                      </p>
-                    </div>
-
-                    <div className="col-span-5 text-center flex flex-col justify-end space-y-1">
-                      <p className="font-extrabold text-slate-900 uppercase tracking-wide leading-none">Hormat Kami,</p>
-                      <p className="font-bold text-slate-700 block leading-none">PT. Portal Digital Media Nusantara</p>
-                      
-                      {/* Reserved space for manual signature and actual physical wet stamp */}
-                      <div className="h-20 w-44 mx-auto relative select-none shrink-0" />
-
-                      {/* Line Name and title */}
-                      <div className="space-y-0.5">
-                        <strong className="text-slate-900 font-black text-xs block uppercase underline leading-none">
-                          {selectedQuote.signerName}
-                        </strong>
-                        <span className="text-slate-500 font-bold block text-[10px] leading-tight mt-0.5">
-                          {selectedQuote.signerTitle}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* BOTTOM BRANDING STRIP (A4 red bar bottom edge + Lower-Right Signal antenna logo matching image) */}
-                  <div className="mt-14 relative overflow-visible -mx-[18mm]">
-                    
-                    {/* Tiny signal antenna tower logo printed in the lower right bottom corner exactly like image */}
-                    <div className="absolute right-[18mm] bottom-[15px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible">
-                      <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
-                        {/* Red Antenna graphic waves */}
-                        <div className="w-[32px] h-[32px] rounded-full bg-[#CC0000] flex items-center justify-center relative shadow-3xs text-white">
-                          
-                          {/* waves concentric path */}
-                          <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                            <path d="M50,45 L50,80" />
-                          </svg>
-
-                          {/* Outer wave rings */}
-                          <div className="absolute -top-2 left-[8px] right-[8px] flex flex-col items-center">
-                            <div className="w-[18px] h-[18px] rounded-full border border-white border-dashed relative flex items-center justify-center">
-                              <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
-                            </div>
+                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
+                          <div className="print:hidden mt-14 relative overflow-visible -mx-[18mm]">
+                            {renderFooterStripping()}
                           </div>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Bottom Red strip band matching attached picture */}
-                    <div className="w-full h-8 bg-[#CC0000]"></div>
-                  </div>
-                </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+
+                  {/* Table Footer Space Reservation */}
+                  <tfoot>
+                    <tr className="border-none m-0 p-0">
+                      <td className="p-0 border-none m-0">
+                        <div className="hidden print:block h-[50px] w-full" />
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
 
               </div>
 
