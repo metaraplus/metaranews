@@ -362,21 +362,25 @@ export default function QuotationLetterCreator() {
       <div className="flex items-start gap-4">
         {/* Logo container */}
         <div className="flex flex-col items-center">
-          {/* Red Signal Emblem */}
-          <div className="w-[62px] h-[62px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
-            {/* Inside white stylized 'M' curve line */}
-            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-              <path d="M50,45 L50,80" />
-            </svg>
-            {/* Top antenna signals antenna circles radiating */}
-            <div className="absolute -top-3 left-[17px] right-[17px] flex flex-col items-center">
-              {/* concentric signal circles */}
-              <div className="w-[28px] h-[28px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
-                <div className="w-[18px] h-[18px] rounded-full border-1.5 border-white relative flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 bg-yellow-300 rounded-full"></span>
-                </div>
-              </div>
+          {/* Red Signal Emblem replaced with new logo */}
+          <div className="w-[62px] h-[62px] rounded-full bg-white border border-slate-100 flex items-center justify-center relative overflow-hidden shadow-xs shrink-0">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain p-1"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.style.display = 'none';
+                const fb = e.currentTarget.parentElement?.querySelector('.fallback-svg');
+                if (fb) fb.classList.remove('hidden');
+              }}
+            />
+            <div className="fallback-svg hidden w-full h-full flex items-center justify-center bg-[#CC0000] text-white">
+              <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+                <path d="M50,45 L50,80" />
+              </svg>
             </div>
           </div>
           {/* Metara wordmark */}
@@ -407,20 +411,24 @@ export default function QuotationLetterCreator() {
     <div className="relative overflow-visible w-full">
       {/* Tiny signal antenna tower logo printed in the lower right bottom corner exactly like image */}
       <div className="absolute right-[18mm] bottom-[15px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible">
-        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
-          {/* Red Antenna graphic waves */}
-          <div className="w-[32px] h-[32px] rounded-full bg-[#CC0000] flex items-center justify-center relative shadow-3xs text-white">
-            {/* waves concentric path */}
+        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
+          <img
+            src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA"
+            alt="Metaranews Logo Mini"
+            className="w-full h-full object-contain p-1"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.style.display = 'none';
+              const fb = e.currentTarget.parentElement?.querySelector('.fallback-footer-svg');
+              if (fb) fb.classList.remove('hidden');
+            }}
+          />
+          <div className="fallback-footer-svg hidden w-full h-full flex items-center justify-center bg-[#CC0000] text-white">
             <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
               <path d="M50,45 L50,80" />
             </svg>
-            {/* Outer wave rings */}
-            <div className="absolute -top-2 left-[8px] right-[8px] flex flex-col items-center">
-              <div className="w-[18px] h-[18px] rounded-full border border-white border-dashed relative flex items-center justify-center">
-                <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
-              </div>
-            </div>
           </div>
         </div>
       </div>

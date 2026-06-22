@@ -328,17 +328,24 @@ export default function SpjCreator() {
           </span>
           <div className="flex items-center gap-2.5">
             {/* emblem */}
-            <div className="w-[52px] h-[52px] rounded-full bg-[#C61C23] border border-red-700 flex items-center justify-center relative overflow-visible shadow-sm text-white">
-              <svg viewBox="0 0 100 100" className="w-[82%] h-[82%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                <path d="M50,45 L50,80" />
-              </svg>
-              <div className="absolute -top-2 left-[14px] right-[14px] flex flex-col items-center">
-                <div className="w-[22px] h-[22px] rounded-full border border-white border-dashed animate-pulse relative flex items-center justify-center">
-                  <div className="w-[12px] h-[12px] rounded-full border border-white relative flex items-center justify-center">
-                    <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
-                  </div>
-                </div>
+            <div className="w-[52px] h-[52px] rounded-full bg-white border border-slate-100 flex items-center justify-center relative overflow-hidden shadow-sm shrink-0">
+              <img 
+                src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+                alt="Metaranews Logo" 
+                className="w-full h-full object-contain p-1"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.style.display = 'none';
+                  const fb = e.currentTarget.parentElement?.querySelector('.fallback-svg');
+                  if (fb) fb.classList.remove('hidden');
+                }}
+              />
+              <div className="fallback-svg hidden w-full h-full flex items-center justify-center bg-[#C61C23] text-white">
+                <svg viewBox="0 0 100 100" className="w-[82%] h-[82%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+                  <path d="M50,45 L50,80" />
+                </svg>
               </div>
             </div>
             
@@ -373,14 +380,23 @@ export default function SpjCreator() {
   const renderFooterStripping = () => (
     <div className="relative overflow-visible w-full text-left">
       {/* Floating red antenna-signal emblem on bottom right - resting beautifully directly on top of the red bar */}
-      <div className="absolute right-[10mm] bottom-[30px] w-[50px] h-[50px] flex items-center justify-center select-none overflow-visible z-20 pointer-events-none">
-        <div className="w-[38px] h-[38px] text-[#C61C23] relative flex items-center justify-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-current" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
-            {/* Concentric transmitter signal rings */}
+      <div className="absolute right-[10mm] bottom-[20px] w-[46px] h-[46px] flex items-center justify-center select-none overflow-hidden z-20 rounded-full bg-white border border-slate-200 shadow-sm pointer-events-none">
+        <img
+          src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA"
+          alt="Metaranews Logo Mini"
+          className="w-full h-full object-contain p-1"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.style.display = 'none';
+            const fb = e.currentTarget.parentElement?.querySelector('.fallback-footer-svg');
+            if (fb) fb.classList.remove('hidden');
+          }}
+        />
+        <div className="fallback-footer-svg hidden w-full h-full flex items-center justify-center bg-[#C61C23] text-white">
+          <svg viewBox="0 0 100 100" className="w-[70%] h-[70%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
             <path d="M50,45 L50,80" />
-            <circle cx="50" cy="50" r="14" strokeDasharray="3 3" />
-            <circle cx="50" cy="50" r="2" fill="currentColor" />
           </svg>
         </div>
       </div>
