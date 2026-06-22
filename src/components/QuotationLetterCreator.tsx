@@ -924,7 +924,7 @@ export default function QuotationLetterCreator() {
                 </div>
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
-                <div className="hidden print:block fixed bottom-0 left-0 right-0 bg-transparent z-[100] pointer-events-none">
+                <div className="hidden print:block fixed bottom-0 left-0 right-0 h-[60px] bg-white z-[100] pointer-events-none">
                   {renderFooterStripping()}
                 </div>
 
@@ -1094,6 +1094,11 @@ export default function QuotationLetterCreator() {
                             </div>
                           </div>
 
+                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
+                          <div className="print:hidden mt-14 relative overflow-visible -mx-[18mm]">
+                            {renderFooterStripping()}
+                          </div>
+
                         </div>
                       </td>
                     </tr>
@@ -1108,11 +1113,6 @@ export default function QuotationLetterCreator() {
                     </tr>
                   </tfoot>
                 </table>
-
-                {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
-                <div className="print:hidden mt-auto relative overflow-visible -mx-[18mm] pt-14 no-print-element">
-                  {renderFooterStripping()}
-                </div>
 
               </div>
 

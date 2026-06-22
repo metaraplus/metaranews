@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@import "tailwindcss";
-
 @layer utilities {
   @media print {
     /* Hide all elements that are not part of the printed document */
