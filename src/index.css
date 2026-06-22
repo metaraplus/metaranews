@@ -2,36 +2,66 @@
 
 @layer utilities {
   @media print {
-    /* Hide all elements that are not part of the printed document */
-    body * {
-      visibility: hidden;
+    /* 1. HIDE ALL SIBLING / NAVIGATION / NON-PRINT SYSTEM INTERFACING NODES */
+    nav, header, footer, aside, button, input, select, textarea,
+    .no-print-element, .print\:hidden,
+    #spj-sidebar-panel,
+    #spj-editor-inputs-panel,
+    #spj-live-preview-box > span,
+    #spj-live-preview-container > .mb-4,
+    #quotations-side-manager,
+    #quote-editor-form-panel,
+    #surat-penawaran-creator-root > h3,
+    #surat-penawaran-creator-root > p {
+      display: none !important;
     }
-    #print-section, #print-section * {
-      visibility: visible;
+
+    /* 2. FORCE MAIN PAGE WRAPPERS AND TIMELINE CONTAINERS TO BE INVISIBLE BLOCK LAYOUTS */
+    html, body, #root, #root > div, main, section,
+    #dashboard-content-tabs-section,
+    #dashboard-content-tabs-section > div,
+    #spj-tabs-container,
+    #spj-editor-preview-grid,
+    #spj-live-preview-box,
+    #spj-live-preview-container,
+    #surat-penawaran-creator-root,
+    #quotations-inputs-preview-workspace,
+    #quotations-inputs-preview-workspace > div,
+    .relative {
+      display: block !important;
+      position: static !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: auto !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      background: transparent !important;
+      transform: none !important;
     }
+
+    /* 3. CORE PRINT ELEMENT SIZING DEFINITION COINCIDING EXACTLY WITH A4 PAPER DIMENSION */
     #print-section {
-      position: absolute;
-      left: 0;
-      top: 0;
+      display: block !important;
+      position: relative !important;
       width: 210mm !important;
       min-height: 297mm !important;
       margin: 0 !important;
       padding: 18mm !important;
+      box-sizing: border-box !important;
+      background: white !important;
       border: none !important;
       box-shadow: none !important;
-      background: white !important;
-      box-sizing: border-box !important;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
-    /* Force page dimensions for A4 */
+
+    /* 4. FORCE A4 PHYSICAL PRINT PRESETS VIA THE WEB BROWSER INTERACTIVE SYSTEM */
     @page {
       size: A4;
       margin: 0;
-    }
-    /* Exclude elements not meant to print inside print-section */
-    .no-print-element {
-      display: none !important;
     }
   }
 }
