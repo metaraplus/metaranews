@@ -403,10 +403,10 @@ export default function SpjCreator() {
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" id="spj-tabs-container">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start" id="spj-tabs-container">
       
       {/* 1. LEFT SIDEBAR: LIST OF DOCUMENTS */}
-      <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4" id="spj-sidebar-panel">
+      <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4 no-print-element" id="spj-sidebar-panel col-span-4">
         <div className="flex justify-between items-center">
           <div>
             <h3 className="font-black text-slate-800 text-sm uppercase tracking-wider">Arsip SPJ A4</h3>
@@ -488,12 +488,12 @@ export default function SpjCreator() {
         </div>
       </div>
 
-      {/* 2. MIDDLE & RIGHT CHANNELS: EDITOR (col-5) & LIVE PREVIEW (col-7) */}
-      <div className="lg:col-span-8 grid grid-cols-1 xl:grid-cols-12 gap-6" id="spj-editor-preview-grid">
+      {/* 2. RIGHT COLUMN: WORKSPACE LAYOUT (xl:col-span-8) */}
+      <div className="xl:col-span-8 space-y-6" id="spj-editor-preview-grid">
         
         {/* EDIT FILE FORM PANEL */}
         {selectedSpj ? (
-          <div className="xl:col-span-5 space-y-4 text-left" id="spj-editor-inputs-panel">
+          <div className="w-full space-y-4 text-left no-print-element" id="spj-editor-inputs-panel">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h3 className="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
@@ -771,7 +771,11 @@ export default function SpjCreator() {
         ) : null}
 
         {/* 3. RIGHT PANEL: LIVE PREVIEW LAYOUT WITH PRINT SIMULATION */}
-        <div className="xl:col-span-7 flex flex-col items-center justify-start bg-slate-100/50 rounded-3xl border border-slate-200/60 p-4 md:p-6 overflow-x-auto min-h-[700px]" id="spj-live-preview-container">
+        <div className="space-y-4 no-print-element text-left w-full" id="spj-live-preview-box">
+          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block">
+            Pratinjau Hasil Cetak Lembar A4 (Live Preview)
+          </span>
+          <div className="flex flex-col items-center justify-start bg-slate-200/50 rounded-2xl border border-slate-250 p-4 md:p-8 overflow-x-auto min-h-[700px] w-full" id="spj-live-preview-container">
           <div className="mb-4 bg-white px-3 py-1.5 rounded-full border border-slate-200 text-[10px] text-slate-500 font-extrabold shadow-3xs flex items-center gap-1.5 select-none print:hidden">
             <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
             TAMPILAN NYATA STANDAR KERTAS A4
@@ -1038,6 +1042,7 @@ export default function SpjCreator() {
               Silakan pilih salah satu dokumen SPJ dari panel kiri, atau buat baru.
             </div>
           )}
+          </div>
         </div>
 
       </div>
