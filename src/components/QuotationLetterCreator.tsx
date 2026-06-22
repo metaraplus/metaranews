@@ -101,40 +101,84 @@ export default function QuotationLetterCreator() {
     showVat: true
   };
 
-  // Safe fetch from Firestore
+  // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
     async function loadQuotations() {
+      // 1. Instantly load from localStorage so the UI is immediately populated and responsive
+      const stored = localStorage.getItem('metara_quotations');
+      let localList: Quotation[] = [];
+      if (stored) {
+        try {
+          localList = JSON.parse(stored) as Quotation[];
+        } catch (e) {
+          console.error("Failed parsing stored quotations:", e);
+        }
+      }
+
+      // If local list is empty, start with dummy preset
+      if (localList.length === 0) {
+        localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
+      }
+
+      // Pre-populate state immediately
+      setQuotations(localList);
+      setSelectedQuote(localList[0] || null);
+
+      // 2. Fetch from Firestore to sync and merge any remote documents
       try {
         const snap = await getDocs(collection(db, 'quotations'));
-        const list = snap.docs.map(docSnap => docSnap.data() as Quotation);
+        const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
         
-        if (list.length > 0) {
-          // Sort by creation or ID desc
-          list.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-          setQuotations(list);
-          setSelectedQuote(list[0]);
-        } else {
-          // Seed the sample preset initially
-          const preset = { ...dummyQuotationPreset, createdAt: new Date().toISOString() };
-          setQuotations([preset]);
-          setSelectedQuote(preset);
-          try {
-            await setDoc(doc(db, 'quotations', preset.id), preset);
-          } catch (e) {
-            console.warn("Failed seeding preset to Firestore, using local:", e);
+        // Merge strategy based on unique id
+        const mergedMap = new Map<string, Quotation>();
+        
+        // Load remote docs first
+        remoteList.forEach(q => {
+          if (q && q.id) {
+            mergedMap.set(q.id, q);
           }
+        });
+        
+        // Override with local docs (local is usually the absolute source of truth for the active session, or we can merge newest first)
+        localList.forEach(q => {
+          if (q && q.id) {
+            const remoteItem = mergedMap.get(q.id);
+            if (remoteItem) {
+              // Both exist, let's keep the one with newer createdAt or just prefer the local one if isSaving was pending
+              const localCreated = q.createdAt || '';
+              const remoteCreated = remoteItem.createdAt || '';
+              if (remoteCreated > localCreated) {
+                mergedMap.set(q.id, remoteItem);
+              } else {
+                mergedMap.set(q.id, q);
+              }
+            } else {
+              mergedMap.set(q.id, q);
+            }
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        if (mergedList.length > 0) {
+          mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+          setQuotations(mergedList);
+          
+          // Try to retain the current selection if it still exists
+          if (localList[0]) {
+            const currentSelected = mergedList.find(q => q.id === localList[0].id);
+            if (currentSelected) {
+              setSelectedQuote(currentSelected);
+            } else {
+              setSelectedQuote(mergedList[0]);
+            }
+          } else {
+            setSelectedQuote(mergedList[0]);
+          }
+
+          localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
         }
       } catch (err) {
-        console.warn("Using offline storage for quotations:", err);
-        const stored = localStorage.getItem('metara_quotations');
-        if (stored) {
-          const parsed = JSON.parse(stored) as Quotation[];
-          setQuotations(parsed);
-          setSelectedQuote(parsed[0] || null);
-        } else {
-          setQuotations([dummyQuotationPreset]);
-          setSelectedQuote(dummyQuotationPreset);
-        }
+        console.warn("Using offline mode as Firestore is unreachable during startup:", err);
       }
     }
     loadQuotations();
