@@ -68,4 +68,25 @@ export interface Quotation {
   createdAt?: string;
 }
 
+export interface SpjItem {
+  id: string;
+  description: string;
+  quantity: number;
+  period: string;
+  price: number;
+}
 
+export interface Spj {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  recipientName: string;
+  recipientAddress: string;
+  items: SpjItem[];
+  bankName: string;
+  bankAccount: string;
+  bankOwner: string;
+  signerName: string;
+  signerTitle: string;
+  createdAt?: string;
+}
