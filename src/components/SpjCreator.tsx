@@ -771,8 +771,8 @@ export default function SpjCreator() {
         ) : null}
 
         {/* 3. RIGHT PANEL: LIVE PREVIEW LAYOUT WITH PRINT SIMULATION */}
-        <div className="space-y-4 no-print-element text-left w-full" id="spj-live-preview-box">
-          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block">
+        <div className="space-y-4 text-left w-full" id="spj-live-preview-box">
+          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block no-print-element">
             Pratinjau Hasil Cetak Lembar A4 (Live Preview)
           </span>
           <div className="flex flex-col items-center justify-start bg-slate-200/50 rounded-2xl border border-slate-250 p-4 md:p-8 overflow-x-auto min-h-[700px] w-full" id="spj-live-preview-container">
@@ -1011,11 +1011,6 @@ export default function SpjCreator() {
                             </div>
                           </div>
 
-                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
-                          <div className="print:hidden mt-14 relative overflow-visible -mx-[18mm]">
-                            {renderFooterStripping()}
-                          </div>
-
                         </div>
                       </td>
                     </tr>
@@ -1030,6 +1025,11 @@ export default function SpjCreator() {
                     </tr>
                   </tfoot>
                 </table>
+
+                {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
+                <div className="print:hidden mt-auto relative overflow-visible -mx-[18mm] pt-14 no-print-element">
+                  {renderFooterStripping()}
+                </div>
 
               </div>
               

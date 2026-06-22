@@ -1094,11 +1094,6 @@ export default function QuotationLetterCreator() {
                             </div>
                           </div>
 
-                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
-                          <div className="print:hidden mt-14 relative overflow-visible -mx-[18mm]">
-                            {renderFooterStripping()}
-                          </div>
-
                         </div>
                       </td>
                     </tr>
@@ -1113,6 +1108,11 @@ export default function QuotationLetterCreator() {
                     </tr>
                   </tfoot>
                 </table>
+
+                {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
+                <div className="print:hidden mt-auto relative overflow-visible -mx-[18mm] pt-14 no-print-element">
+                  {renderFooterStripping()}
+                </div>
 
               </div>
 
