@@ -46,7 +46,10 @@ import {
   Coins,
   AlertCircle,
   RefreshCw,
-  CloudOff
+  CloudOff,
+  Trash2,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function App() {
@@ -133,6 +136,7 @@ export default function App() {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [isWiping, setIsWiping] = useState(false);
 
   // --- PERSISTENCE & CLOUD SYNCING PROCESS ---
 
@@ -598,6 +602,86 @@ export default function App() {
       setProfileError(err.message || 'Gagal menyimpan profil.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  // --- DATABASE RESET / SYSTEM WIPE OUT ---
+  const handleWipeDatabaseComplete = async (mode: 'blank' | 'seed') => {
+    const confirmation = window.confirm(
+      mode === 'blank'
+        ? "⚠️ PERINGATAN BERSKALA BESAR:\nTindakan ini akan mendelete/menghapus SELURUH database dan data transaksi di Cloud Firestore Anda serta membersihkan cache browser instan.\n\nSistem akan kembali KOSONG (0 data/mulai dari nol).\n\nApakah Anda benar-benar yakin ingin mendelete semua data?"
+        : "Apakah Anda ingin mendelete data saat ini dan melakukan inisialisasi ulang database ke setingan data demo bawaan awal?"
+    );
+    if (!confirmation) return;
+
+    setIsWiping(true);
+    try {
+      console.log("Menghapus semua koleksi database Cloud Firestore...");
+
+      // 1. Fetch all docs in parallel to locate their respective Firestore IDs
+      const [aSnap, jSnap, cSnap, pSnap, sSnap, qSnap] = await Promise.all([
+        getDocs(collection(db, 'articles')),
+        getDocs(collection(db, 'journalists')),
+        getDocs(collection(db, 'categories')),
+        getDocs(collection(db, 'personnels')),
+        getDocs(collection(db, 'spjs')),
+        getDocs(collection(db, 'quotations'))
+      ]);
+
+      // 2. Queue all individual document deletion operations
+      const deletePromises: any[] = [];
+      aSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'articles', docSnap.id))));
+      jSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'journalists', docSnap.id))));
+      cSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'categories', docSnap.id))));
+      pSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'personnels', docSnap.id))));
+      sSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'spjs', docSnap.id))));
+      qSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'quotations', docSnap.id))));
+
+      if (deletePromises.length > 0) {
+        await Promise.all(deletePromises);
+      }
+
+      // 3. Clear all Local Storage browser caches completely
+      localStorage.removeItem('metaranews_articles');
+      localStorage.removeItem('metaranews_journalists');
+      localStorage.removeItem('metaranews_categories');
+      localStorage.removeItem('metaranews_personnels');
+      localStorage.removeItem('metara_spjs');
+      localStorage.removeItem('metara_quotations');
+      localStorage.removeItem('metaranews_current_user');
+
+      // 4. Handle requested reset mode
+      const defaultPersonnels: Personnel[] = [
+        { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+        { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+        { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+      ];
+
+      if (mode === 'seed') {
+        // Re-inject pristine template samples
+        await Promise.all([
+          ...INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j)),
+          ...INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c)),
+          ...INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a)),
+          ...defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
+        ]);
+        alert("🎉 Database berhasil de-reset ke data template default/bawaan awal!");
+      } else {
+        // Pure zero-point blank setup (Start fully from 0)
+        // Keep only login credentials so users can access the blank system
+        await Promise.all(
+          defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
+        );
+        alert("🧹 Sukses! Semua database telah didelete dan dikosongkan total ke angka 0. Anda sekarang dapat mengisi data baru dari awal.");
+      }
+
+      // Refresh page to apply fresh state
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Gagal mendelete database:", err);
+      alert("Terjadi kesalahan teknis saat mendelete database: " + (err.message || String(err)));
+    } finally {
+      setIsWiping(false);
     }
   };
 
@@ -1286,6 +1370,52 @@ export default function App() {
                 onDeleteCategory={handleDeleteCategory}
                 onEditCategory={handleEditCategory}
               />
+
+              {/* Danger Zone: Reset Database */}
+              <div className="bg-red-50/50 border border-red-200 rounded-2xl p-5 md:p-6 space-y-4" id="danger-zone-container">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0 border border-red-200">
+                    <AlertTriangle className="w-5 h-5 text-red-650" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-red-800 text-sm">Zona Bahaya Redaksi (Danger Zone)</h4>
+                    <p className="text-xs text-red-600 mt-0.5 leading-relaxed">
+                      Lakukan reset sistem, menghapus total basis data, atau membersihkan data-data sisa. Tindakan ini bersifat permanen dan langsung tersinkronisasi ke seluruh database server cloud dan penyimpanan browser.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-red-200/60 pt-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                  <div className="text-left space-y-1">
+                    <h5 className="text-xs font-bold text-slate-800">Pilih Mode Pembersihan (Reset):</h5>
+                    <p className="text-[10px] text-slate-500 leading-normal">
+                      Kredensial login bawaan (<code className="bg-slate-100 px-1 py-0.2 rounded text-slate-700 font-mono">admin</code> / <code className="bg-slate-100 px-1 py-0.2 rounded text-slate-700 font-mono">admin123</code>) akan tetap tersimpan agar Anda dapat login kembali sewaktu-waktu.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      disabled={isWiping}
+                      onClick={() => handleWipeDatabaseComplete('seed')}
+                      className="bg-white hover:bg-slate-100/80 active:bg-slate-205 text-slate-750 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none disabled:opacity-50"
+                    >
+                      <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${isWiping ? 'animate-spin' : ''}`} />
+                      Reset ke Template Default
+                    </button>
+                    
+                    <button
+                      type="button"
+                      disabled={isWiping}
+                      onClick={() => handleWipeDatabaseComplete('blank')}
+                      className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-red-500/15 hover:shadow-red-500/25 select-none disabled:bg-red-400"
+                    >
+                      <Trash2 className={`w-3.5 h-3.5 text-white ${isWiping ? 'animate-pulse' : ''}`} />
+                      {isWiping ? 'Mendelete Data...' : 'Delete & Mulai dari 0 (Kosong)'}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
