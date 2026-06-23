@@ -43,7 +43,9 @@ import {
   X,
   Save,
   BookOpen,
-  Coins
+  Coins,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 export default function App() {
@@ -53,6 +55,7 @@ export default function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [personnels, setPersonnels] = useState<Personnel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // --- Login / Profile Session State ---
   const [currentUser, setCurrentUser] = useState<Personnel | null>(() => {
@@ -84,10 +87,20 @@ export default function App() {
   // Fetch all collections from Firestore on mount
   useEffect(() => {
     let active = true;
+
+    // Timeout of 8 seconds to prevent hanging on slow/blocked connections
+    const timeoutId = setTimeout(() => {
+      if (active) {
+        console.warn("Koneksi Firebase lambat atau gagal merespon. Menampilkan halaman penanganan koneksi.");
+        setConnectionError("Waktu tunggu koneksi database habis (Timeout 8 detik). Pastikan koneksi internet Anda stabil.");
+        setIsLoading(false);
+      }
+    }, 8000);
     
     async function loadData() {
       try {
         setIsLoading(true);
+        setConnectionError(null);
         
         // Fetch collections in parallel to prevent network waterfall delays
         const [jSnap, cSnap, aSnap, pSnap] = await Promise.all([
@@ -97,59 +110,62 @@ export default function App() {
           getDocs(collection(db, 'personnels'))
         ]);
 
-        let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
-        let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
-        let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
-        let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
-
-        // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
-        if (jList.length === 0) {
-          console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
-          await Promise.all(
-            INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
-          );
-          jList = INITIAL_JOURNALISTS;
-        }
-
-        if (cList.length === 0) {
-          console.log("Seeding INITIAL_CATEGORIES to Firebase...");
-          await Promise.all(
-            INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
-          );
-          cList = INITIAL_CATEGORIES;
-        }
-
-        if (aList.length === 0) {
-          console.log("Seeding INITIAL_ARTICLES to Firebase...");
-          await Promise.all(
-            INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
-          );
-          aList = INITIAL_ARTICLES;
-        }
-
-        if (pList.length === 0) {
-          console.log("Seeding default personnels to Firebase...");
-          const defaultPersonnels: Personnel[] = [
-            { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
-            { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
-            { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
-          ];
-          await Promise.all(
-            defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
-          );
-          pList = defaultPersonnels;
-        }
-
         if (active) {
+          clearTimeout(timeoutId);
+          let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
+          let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
+          let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
+          let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
+
+          // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
+          if (jList.length === 0) {
+            console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
+            await Promise.all(
+              INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
+            );
+            jList = INITIAL_JOURNALISTS;
+          }
+
+          if (cList.length === 0) {
+            console.log("Seeding INITIAL_CATEGORIES to Firebase...");
+            await Promise.all(
+              INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
+            );
+            cList = INITIAL_CATEGORIES;
+          }
+
+          if (aList.length === 0) {
+            console.log("Seeding INITIAL_ARTICLES to Firebase...");
+            await Promise.all(
+              INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
+            );
+            aList = INITIAL_ARTICLES;
+          }
+
+          if (pList.length === 0) {
+            console.log("Seeding default personnels to Firebase...");
+            const defaultPersonnels: Personnel[] = [
+              { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+              { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+              { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+            ];
+            await Promise.all(
+              defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
+            );
+            pList = defaultPersonnels;
+          }
+
           setJournalists(jList);
           setCategories(cList);
           setArticles(aList);
           setPersonnels(pList);
           setIsLoading(false);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Gagal memuat data dari Firebase Firestore:", err);
         if (active) {
+          clearTimeout(timeoutId);
+          setConnectionError(err?.message || String(err));
           setIsLoading(false);
         }
       }
@@ -159,6 +175,7 @@ export default function App() {
     
     return () => {
       active = false;
+      clearTimeout(timeoutId);
     };
   }, []);
 
@@ -570,6 +587,57 @@ export default function App() {
     document.body.removeChild(link);
   };
 
+  if (connectionError) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6" id="connection-error">
+        <div className="bg-white p-8 rounded-2xl border border-red-100 shadow-xl max-w-md w-full text-center space-y-5">
+          <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto animate-pulse">
+            <AlertCircle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800 text-base">Gagal Terhubung ke Database Cloud</h3>
+            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
+              Koneksi ke database cloud Firebase Firestore sangat lambat, terputus, atau terhalang oleh pemblokir iklan (ad-blocker) / ekstensi di browser Anda.
+            </p>
+            <div className="mt-4 p-2 bg-red-50/50 rounded-lg border border-red-100 text-[9px] font-mono text-red-700 max-h-24 overflow-y-auto leading-normal text-left">
+              Detail Error: {connectionError}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <button
+              onClick={() => {
+                setConnectionError(null);
+                setIsLoading(true);
+                window.location.reload();
+              }}
+              className="w-full bg-[#C61C23] hover:bg-red-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Coba Hubungkan Kembali
+            </button>
+            <button
+              onClick={() => {
+                setConnectionError(null);
+                setJournalists(INITIAL_JOURNALISTS);
+                setCategories(INITIAL_CATEGORIES);
+                setArticles(INITIAL_ARTICLES);
+                setPersonnels([
+                  { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi (Demo Mode)', journalistId: 'j9' },
+                  { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah (Demo Mode)', journalistId: 'j2' },
+                  { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso (Demo Mode)', journalistId: 'j1' }
+                ]);
+                setIsLoading(false);
+              }}
+              className="w-full bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition-all cursor-pointer"
+            >
+              Jalankan Mode Demo (Hanya Baca)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 animate-pulse" id="loading-spinner">
@@ -577,7 +645,7 @@ export default function App() {
           <div className="w-10 h-10 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></div>
           <div>
             <h3 className="font-bold text-slate-800 text-sm">Menghubungkan ke Firebase...</h3>
-            <p className="text-[11px] text-slate-400 mt-1">Mengunduh data performa jurnalistik dan sinkronisasi hak masuk real-time.</p>
+            <p className="text-[11px] text-slate-400 mt-1 font-medium leading-relaxed">Mengunduh data performa jurnalistik dan sinkronisasi hak masuk real-time.</p>
           </div>
         </div>
       </div>
