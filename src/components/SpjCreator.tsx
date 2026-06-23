@@ -104,7 +104,7 @@ export default function SpjCreator() {
       localList = [{ ...dummySpjPreset, createdAt: new Date().toISOString() }];
     }
 
-    // Pre-populate state immediately
+    // Pre-populate state immediately from cache
     setSpjs(localList);
     setSelectedSpj(prevSelected => {
       if (prevSelected) return prevSelected;
@@ -115,41 +115,22 @@ export default function SpjCreator() {
     const unsubscribe = onSnapshot(collection(db, 'spjs'), (snap) => {
       const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
       
-      const mergedMap = new Map<string, Spj>();
-      
-      // Load remote docs
-      remoteList.forEach(s => {
-        if (s && s.id) {
-          mergedMap.set(s.id, s);
-        }
-      });
-      
-      // Include anything in localStorage that isn't in Firestore yet
-      localList.forEach(s => {
-        if (s && s.id) {
-          if (!mergedMap.has(s.id)) {
-            mergedMap.set(s.id, s);
-          } else {
-            const remoteItem = mergedMap.get(s.id)!;
-            const localTime = s.updatedAt || '';
-            const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
-            if (localTime && localTime > remoteTime) {
-              mergedMap.set(s.id, s);
-            }
-          }
-        }
-      });
-
-      const mergedList = Array.from(mergedMap.values());
-      if (mergedList.length > 0) {
-        mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-        setSpjs(mergedList);
-        localStorage.setItem('metara_spjs', JSON.stringify(mergedList));
+      if (remoteList.length > 0) {
+        // Master truth comes directly from Cloud DB
+        remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+        setSpjs(remoteList);
+        localStorage.setItem('metara_spjs', JSON.stringify(remoteList));
         
         setSelectedSpj(current => {
-          if (!current) return mergedList[0];
-          const matched = mergedList.find(item => item.id === current.id);
-          return matched || mergedList[0];
+          if (!current) return remoteList[0];
+          const matched = remoteList.find(item => item.id === current.id);
+          return matched || remoteList[0];
+        });
+      } else {
+        // If Firestore is completely empty, register the initial default dummy preset
+        const defaultSample = { ...dummySpjPreset, createdAt: new Date().toISOString() };
+        setDoc(doc(db, 'spjs', defaultSample.id), defaultSample).catch(err => {
+          console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
         });
       }
     }, (err) => {

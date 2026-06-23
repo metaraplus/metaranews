@@ -121,7 +121,7 @@ export default function QuotationLetterCreator() {
       localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
     }
 
-    // Pre-populate state immediately
+    // Pre-populate state immediately from cache
     setQuotations(localList);
     setSelectedQuote(prevSelected => {
       if (prevSelected) return prevSelected;
@@ -132,44 +132,23 @@ export default function QuotationLetterCreator() {
     const unsubscribe = onSnapshot(collection(db, 'quotations'), (snap) => {
       const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
       
-      const mergedMap = new Map<string, Quotation>();
-      
-      // Load remote docs first (always master truth)
-      remoteList.forEach(q => {
-        if (q && q.id) {
-          mergedMap.set(q.id, q);
-        }
-      });
-
-      // Include anything in localStorage that isn't in Firestore yet (e.g. offline drafts)
-      localList.forEach(q => {
-        if (q && q.id) {
-          if (!mergedMap.has(q.id)) {
-            // Document only exists locally, keep it as local draft
-            mergedMap.set(q.id, q);
-          } else {
-            // Both exist, keep the newer one based on updatedAt/createdAt
-            const remoteItem = mergedMap.get(q.id)!;
-            const localTime = q.updatedAt || '';
-            const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
-            if (localTime && localTime > remoteTime) {
-              mergedMap.set(q.id, q);
-            }
-          }
-        }
-      });
-
-      const mergedList = Array.from(mergedMap.values());
-      if (mergedList.length > 0) {
-        mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-        setQuotations(mergedList);
-        localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
+      if (remoteList.length > 0) {
+        // Master truth comes directly from Cloud DB
+        remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+        setQuotations(remoteList);
+        localStorage.setItem('metara_quotations', JSON.stringify(remoteList));
         
         // Auto-select or preserve currently selected item
         setSelectedQuote(current => {
-          if (!current) return mergedList[0];
-          const matched = mergedList.find(item => item.id === current.id);
-          return matched || mergedList[0];
+          if (!current) return remoteList[0];
+          const matched = remoteList.find(item => item.id === current.id);
+          return matched || remoteList[0];
+        });
+      } else {
+        // If Firestore is completely empty, register the initial default dummy preset
+        const defaultSample = { ...dummyQuotationPreset, createdAt: new Date().toISOString() };
+        setDoc(doc(db, 'quotations', defaultSample.id), defaultSample).catch(err => {
+          console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
         });
       }
     }, (err) => {
