@@ -19,8 +19,6 @@ import ManagementPanel from './components/ManagementPanel';
 import PersonnelPanel from './components/PersonnelPanel';
 import QuotationLetterCreator from './components/QuotationLetterCreator';
 import SpjCreator from './components/SpjCreator';
-import LetterAgendaBook from './components/LetterAgendaBook';
-import InvoicePaymentTracker from './components/InvoicePaymentTracker';
 import { db, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from './firebase';
 import { 
   LayoutDashboard, 
@@ -41,74 +39,16 @@ import {
   EyeOff,
   Edit3,
   X,
-  Save,
-  BookOpen,
-  Coins,
-  AlertCircle,
-  RefreshCw,
-  CloudOff,
-  Trash2,
-  RotateCcw,
-  AlertTriangle
+  Save
 } from 'lucide-react';
 
 export default function App() {
-  // --- Local Storage Cached State Initializers for Instant Offline Rendering ---
-  const [articles, setArticles] = useState<Article[]>(() => {
-    const cached = localStorage.getItem('metaranews_articles');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error("Gagal parse cache artikel:", e);
-      }
-    }
-    return INITIAL_ARTICLES;
-  });
-
-  const [journalists, setJournalists] = useState<Journalist[]>(() => {
-    const cached = localStorage.getItem('metaranews_journalists');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error("Gagal parse cache jurnalis:", e);
-      }
-    }
-    return INITIAL_JOURNALISTS;
-  });
-
-  const [categories, setCategories] = useState<Category[]>(() => {
-    const cached = localStorage.getItem('metaranews_categories');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error("Gagal parse cache kategori:", e);
-      }
-    }
-    return INITIAL_CATEGORIES;
-  });
-
-  const [personnels, setPersonnels] = useState<Personnel[]>(() => {
-    const cached = localStorage.getItem('metaranews_personnels');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error("Gagal parse cache personil:", e);
-      }
-    }
-    return [
-      { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
-      { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
-      { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
-    ];
-  });
-
-  const [isLoading, setIsLoading] = useState(false); // Instantly ready!
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [dbStatus, setDbStatus] = useState<'connecting' | 'synced' | 'offline'>('connecting');
+  // --- Firebase Loading State & Synchronized States ---
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [journalists, setJournalists] = useState<Journalist[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [personnels, setPersonnels] = useState<Personnel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // --- Login / Profile Session State ---
   const [currentUser, setCurrentUser] = useState<Personnel | null>(() => {
@@ -124,7 +64,7 @@ export default function App() {
 
   // --- Active Tab State ---
   const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
-  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'nomor-surat' | 'pembayaran'>('laporan');
+  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
@@ -136,53 +76,45 @@ export default function App() {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
-  const [isWiping, setIsWiping] = useState(false);
 
-  // --- PERSISTENCE & CLOUD SYNCING PROCESS ---
-
-  // Automatically survive local state changes to Local Storage on every update
-  useEffect(() => {
-    if (articles && articles.length > 0) {
-      localStorage.setItem('metaranews_articles', JSON.stringify(articles));
-    }
-  }, [articles]);
-
-  useEffect(() => {
-    if (journalists && journalists.length > 0) {
-      localStorage.setItem('metaranews_journalists', JSON.stringify(journalists));
-    }
-  }, [journalists]);
-
-  useEffect(() => {
-    if (categories && categories.length > 0) {
-      localStorage.setItem('metaranews_categories', JSON.stringify(categories));
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    if (personnels && personnels.length > 0) {
-      localStorage.setItem('metaranews_personnels', JSON.stringify(personnels));
-    }
-  }, [personnels]);
-
-  // Attempt to sync client cache with Cloud Firestore in the background on mount
+  // Fetch all collections from Firestore on mount
   useEffect(() => {
     let active = true;
-    setDbStatus('connecting');
+    let fallbackTriggered = false;
 
-    // 4.5 second timeout threshold before considering connection "offline"
+    // Timeout: if connection or query takes more than 5 seconds, switch to local storage fallback
     const timeoutId = setTimeout(() => {
-      if (active && dbStatus === 'connecting') {
-        console.warn("Koneksi cloud sangat lambat atau terhambat. Lanjut menggunakan cache lokal.");
-        setDbStatus('offline');
+      if (active) {
+        console.warn("Koneksi Firebase lambat atau gagal. Menggunakan penyimpanan lokal sebagai cadangan.");
+        fallbackTriggered = true;
+        loadLocalFallback();
       }
-    }, 4500);
+    }, 5000);
 
-    async function syncData() {
+    function loadLocalFallback() {
+      const localArticles = localStorage.getItem('metaranews_articles');
+      const localJournalists = localStorage.getItem('metaranews_journalists');
+      const localCategories = localStorage.getItem('metaranews_categories');
+      const localPersonnels = localStorage.getItem('metaranews_personnels');
+
+      setArticles(localArticles ? JSON.parse(localArticles) : INITIAL_ARTICLES);
+      setJournalists(localJournalists ? JSON.parse(localJournalists) : INITIAL_JOURNALISTS);
+      setCategories(localCategories ? JSON.parse(localCategories) : INITIAL_CATEGORIES);
+
+      const defaultPersonnels: Personnel[] = [
+        { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+        { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+        { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+      ];
+      setPersonnels(localPersonnels ? JSON.parse(localPersonnels) : defaultPersonnels);
+      setIsLoading(false);
+    }
+    
+    async function loadData() {
       try {
-        console.log("Menghubungkan ke Cloud Firestore...");
+        setIsLoading(true);
         
-        // Fetch collections in parallel to prevent waterfalls
+        // Fetch collections in parallel to prevent network waterfall delays
         const [jSnap, cSnap, aSnap, pSnap] = await Promise.all([
           getDocs(collection(db, 'journalists')),
           getDocs(collection(db, 'categories')),
@@ -190,82 +122,107 @@ export default function App() {
           getDocs(collection(db, 'personnels'))
         ]);
 
-        if (active) {
+        if (fallbackTriggered) return;
+
+        let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
+        let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
+        let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
+        let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
+
+        // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
+        if (jList.length === 0) {
+          console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
+          await Promise.all(
+            INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
+          );
+          jList = INITIAL_JOURNALISTS;
+        }
+
+        if (cList.length === 0) {
+          console.log("Seeding INITIAL_CATEGORIES to Firebase...");
+          await Promise.all(
+            INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
+          );
+          cList = INITIAL_CATEGORIES;
+        }
+
+        if (aList.length === 0) {
+          console.log("Seeding INITIAL_ARTICLES to Firebase...");
+          await Promise.all(
+            INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
+          );
+          aList = INITIAL_ARTICLES;
+        }
+
+        if (pList.length === 0) {
+          console.log("Seeding default personnels to Firebase...");
+          const defaultPersonnels: Personnel[] = [
+            { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+            { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+            { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+          ];
+          await Promise.all(
+            defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
+          );
+          pList = defaultPersonnels;
+        }
+
+        if (active && !fallbackTriggered) {
           clearTimeout(timeoutId);
-          let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
-          let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
-          let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
-          let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
-
-          // Seed default collections if empty in Firebase database
-          if (jList.length === 0) {
-            console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
-            await Promise.all(
-              INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
-            );
-            jList = INITIAL_JOURNALISTS;
-          }
-
-          if (cList.length === 0) {
-            console.log("Seeding INITIAL_CATEGORIES to Firebase...");
-            await Promise.all(
-              INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
-            );
-            cList = INITIAL_CATEGORIES;
-          }
-
-          if (aList.length === 0) {
-            console.log("Seeding INITIAL_ARTICLES to Firebase...");
-            await Promise.all(
-              INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
-            );
-            aList = INITIAL_ARTICLES;
-          }
-
-          if (pList.length === 0) {
-            console.log("Seeding default personnels to Firebase...");
-            const defaultPersonnels: Personnel[] = [
-              { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
-              { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
-              { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
-            ];
-            await Promise.all(
-              defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
-            );
-            pList = defaultPersonnels;
-          }
-
-          // Update local state with real data from cloud
           setJournalists(jList);
           setCategories(cList);
           setArticles(aList);
           setPersonnels(pList);
-
-          // Save back updated elements to Local Storage
+          
+          // Save a localized copy in case of future network interruption
           localStorage.setItem('metaranews_articles', JSON.stringify(aList));
           localStorage.setItem('metaranews_journalists', JSON.stringify(jList));
           localStorage.setItem('metaranews_categories', JSON.stringify(cList));
           localStorage.setItem('metaranews_personnels', JSON.stringify(pList));
-
-          setDbStatus('synced');
-          console.log("Sinkronisasi database awan Firebase berhasil dilakukan.");
+          
+          setIsLoading(false);
         }
-      } catch (err: any) {
-        console.warn("Gagal menyinkronkan data dengan Firebase Firestore, bermigrasi ke cache browser:", err);
-        if (active) {
+      } catch (err) {
+        console.error("Gagal memuat data dari Firebase Firestore:", err);
+        if (active && !fallbackTriggered) {
           clearTimeout(timeoutId);
-          setDbStatus('offline');
+          loadLocalFallback();
         }
       }
     }
-
-    syncData();
-
+    
+    loadData();
+    
     return () => {
       active = false;
       clearTimeout(timeoutId);
     };
   }, []);
+
+  // Save changes to localStorage as a redundant backup layer
+  useEffect(() => {
+    if (articles.length > 0) {
+      localStorage.setItem('metaranews_articles', JSON.stringify(articles));
+    }
+  }, [articles]);
+
+  useEffect(() => {
+    if (journalists.length > 0) {
+      localStorage.setItem('metaranews_journalists', JSON.stringify(journalists));
+    }
+  }, [journalists]);
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      localStorage.setItem('metaranews_categories', JSON.stringify(categories));
+    }
+  }, [categories]);
+
+  useEffect(() => {
+    if (personnels.length > 0) {
+      localStorage.setItem('metaranews_personnels', JSON.stringify(personnels));
+    }
+  }, [personnels]);
 
   // Enforce access rights tab limits
   useEffect(() => {
@@ -315,10 +272,11 @@ export default function App() {
         // Edit mode
         const updated = articles.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art);
         setArticles(updated);
+        localStorage.setItem('metaranews_articles', JSON.stringify(updated));
         try {
           await setDoc(doc(db, 'articles', articleData.id), { ...articleData } as Article);
         } catch (dbErr) {
-          console.warn("Sinkronisasi Firestore gagal:", dbErr);
+          console.warn("Sinkronisasi Firestore gagal, data disimpan secara lokal:", dbErr);
         }
       } else {
         // Add mode
@@ -329,10 +287,11 @@ export default function App() {
         } as Article;
         const updated = [newArticle, ...articles];
         setArticles(updated);
+        localStorage.setItem('metaranews_articles', JSON.stringify(updated));
         try {
           await setDoc(doc(db, 'articles', newId), newArticle);
         } catch (dbErr) {
-          console.warn("Sinkronisasi Firestore gagal:", dbErr);
+          console.warn("Sinkronisasi Firestore gagal, data disimpan secara lokal:", dbErr);
         }
       }
     } catch (err) {
@@ -345,10 +304,11 @@ export default function App() {
     try {
       const updated = articles.filter(a => a.id !== id);
       setArticles(updated);
+      localStorage.setItem('metaranews_articles', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'articles', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus item dari Firestore:", dbErr);
+        console.warn("Gagal menghapus item dari Firestore, perubahan tetap disimpan di browser:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus artikel:", err);
@@ -371,10 +331,11 @@ export default function App() {
       };
       const updated = [...journalists, newJurn];
       setJournalists(updated);
+      localStorage.setItem('metaranews_journalists', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'journalists', newJurn.id), newJurn);
       } catch (dbErr) {
-        console.warn("Gagal mengunggah jurnalis ke Firestore:", dbErr);
+        console.warn("Gagal mengunggah jurnalis ke Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menyimpan jurnalis:", err);
@@ -385,10 +346,11 @@ export default function App() {
     try {
       const updated = journalists.filter(j => j.id !== id);
       setJournalists(updated);
+      localStorage.setItem('metaranews_journalists', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'journalists', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus jurnalis di Firestore:", dbErr);
+        console.warn("Gagal menghapus jurnalis di Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus jurnalis:", err);
@@ -402,10 +364,11 @@ export default function App() {
 
       const updatedJs = journalists.map(j => j.id === id ? { ...j, name, role, coverage } : j);
       setJournalists(updatedJs);
+      localStorage.setItem('metaranews_journalists', JSON.stringify(updatedJs));
       try {
         await setDoc(doc(db, 'journalists', id), { id, name, role, coverage });
       } catch (dbErr) {
-        console.warn("Gagal memperbarui jurnalis di Firestore:", dbErr);
+        console.warn("Gagal memperbarui jurnalis di Firestore, tersimpan lokal:", dbErr);
       }
 
       if (oldName && oldName !== name) {
@@ -420,6 +383,7 @@ export default function App() {
 
         const newArticles = articles.map((art, index) => updatedArticles[index].changed ? updatedArticles[index].updated : art);
         setArticles(newArticles);
+        localStorage.setItem('metaranews_articles', JSON.stringify(newArticles));
 
         // Sync renamed references in Firestore non-blockingly
         for (const item of updatedArticles) {
@@ -447,10 +411,11 @@ export default function App() {
       };
       const updated = [...categories, newCat];
       setCategories(updated);
+      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'categories', newCat.id), newCat);
       } catch (dbErr) {
-        console.warn("Gagal menyimpan kategori ke Firestore:", dbErr);
+        console.warn("Gagal menyimpan kategori ke Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menyimpan kategori:", err);
@@ -461,10 +426,11 @@ export default function App() {
     try {
       const updated = categories.filter(c => c.id !== id);
       setCategories(updated);
+      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'categories', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus kategori dari Firestore:", dbErr);
+        console.warn("Gagal menghapus kategori dari Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus kategori:", err);
@@ -476,10 +442,11 @@ export default function App() {
       const updatedCat = { id, name, color };
       const updated = categories.map(c => c.id === id ? updatedCat : c);
       setCategories(updated);
+      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'categories', id), updatedCat);
       } catch (dbErr) {
-        console.warn("Gagal memperbarui kategori di Firestore:", dbErr);
+        console.warn("Gagal memperbarui kategori di Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal memperbarui kategori:", err);
@@ -499,10 +466,11 @@ export default function App() {
       };
       const updated = [...personnels, newPers];
       setPersonnels(updated);
+      localStorage.setItem('metaranews_personnels', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'personnels', newPers.id), newPers);
       } catch (dbErr) {
-        console.warn("Gagal mengunggah personil ke Firestore:", dbErr);
+        console.warn("Gagal mengunggah personil ke Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menyimpan personil:", err);
@@ -523,15 +491,19 @@ export default function App() {
           const newItem = { ...base, ...updated } as Personnel;
           updatedList = [...prev, newItem];
         }
+        localStorage.setItem('metaranews_personnels', JSON.stringify(updatedList));
         return updatedList;
       });
 
-      const activeCurrentDoc = (personnels.find(p => p.id === id) || currentUser || {}) as Personnel;
-      const finalDoc = { ...activeCurrentDoc, ...updated, id } as Personnel;
-      try {
-        await setDoc(doc(db, 'personnels', id), finalDoc);
-      } catch (dbErr) {
-        console.warn("Gagal memutasi personil di Firestore:", dbErr);
+      // Directly sync target state from local storage write to avoid state closure delay
+      const localUpdatedList = JSON.parse(localStorage.getItem('metaranews_personnels') || '[]');
+      const targetDoc = localUpdatedList.find((p: Personnel) => p.id === id);
+      if (targetDoc) {
+        try {
+          await setDoc(doc(db, 'personnels', id), targetDoc);
+        } catch (dbErr) {
+          console.warn("Gagal memutasi personil di Firestore, disimpan lokal:", dbErr);
+        }
       }
 
       if (currentUser && currentUser.id === id) {
@@ -549,10 +521,11 @@ export default function App() {
     try {
       const updated = personnels.filter(p => p.id !== id);
       setPersonnels(updated);
+      localStorage.setItem('metaranews_personnels', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'personnels', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus personil di Firestore:", dbErr);
+        console.warn("Gagal menghapus personil di Firestore, tersimpan lokal:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus personil:", err);
@@ -602,86 +575,6 @@ export default function App() {
       setProfileError(err.message || 'Gagal menyimpan profil.');
     } finally {
       setProfileLoading(false);
-    }
-  };
-
-  // --- DATABASE RESET / SYSTEM WIPE OUT ---
-  const handleWipeDatabaseComplete = async (mode: 'blank' | 'seed') => {
-    const confirmation = window.confirm(
-      mode === 'blank'
-        ? "⚠️ PERINGATAN BERSKALA BESAR:\nTindakan ini akan mendelete/menghapus SELURUH database dan data transaksi di Cloud Firestore Anda serta membersihkan cache browser instan.\n\nSistem akan kembali KOSONG (0 data/mulai dari nol).\n\nApakah Anda benar-benar yakin ingin mendelete semua data?"
-        : "Apakah Anda ingin mendelete data saat ini dan melakukan inisialisasi ulang database ke setingan data demo bawaan awal?"
-    );
-    if (!confirmation) return;
-
-    setIsWiping(true);
-    try {
-      console.log("Menghapus semua koleksi database Cloud Firestore...");
-
-      // 1. Fetch all docs in parallel to locate their respective Firestore IDs
-      const [aSnap, jSnap, cSnap, pSnap, sSnap, qSnap] = await Promise.all([
-        getDocs(collection(db, 'articles')),
-        getDocs(collection(db, 'journalists')),
-        getDocs(collection(db, 'categories')),
-        getDocs(collection(db, 'personnels')),
-        getDocs(collection(db, 'spjs')),
-        getDocs(collection(db, 'quotations'))
-      ]);
-
-      // 2. Queue all individual document deletion operations
-      const deletePromises: any[] = [];
-      aSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'articles', docSnap.id))));
-      jSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'journalists', docSnap.id))));
-      cSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'categories', docSnap.id))));
-      pSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'personnels', docSnap.id))));
-      sSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'spjs', docSnap.id))));
-      qSnap.docs.forEach(docSnap => deletePromises.push(deleteDoc(doc(db, 'quotations', docSnap.id))));
-
-      if (deletePromises.length > 0) {
-        await Promise.all(deletePromises);
-      }
-
-      // 3. Clear all Local Storage browser caches completely
-      localStorage.removeItem('metaranews_articles');
-      localStorage.removeItem('metaranews_journalists');
-      localStorage.removeItem('metaranews_categories');
-      localStorage.removeItem('metaranews_personnels');
-      localStorage.removeItem('metara_spjs');
-      localStorage.removeItem('metara_quotations');
-      localStorage.removeItem('metaranews_current_user');
-
-      // 4. Handle requested reset mode
-      const defaultPersonnels: Personnel[] = [
-        { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
-        { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
-        { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
-      ];
-
-      if (mode === 'seed') {
-        // Re-inject pristine template samples
-        await Promise.all([
-          ...INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j)),
-          ...INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c)),
-          ...INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a)),
-          ...defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
-        ]);
-        alert("🎉 Database berhasil de-reset ke data template default/bawaan awal!");
-      } else {
-        // Pure zero-point blank setup (Start fully from 0)
-        // Keep only login credentials so users can access the blank system
-        await Promise.all(
-          defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
-        );
-        alert("🧹 Sukses! Semua database telah didelete dan dikosongkan total ke angka 0. Anda sekarang dapat mengisi data baru dari awal.");
-      }
-
-      // Refresh page to apply fresh state
-      window.location.reload();
-    } catch (err: any) {
-      console.error("Gagal mendelete database:", err);
-      alert("Terjadi kesalahan teknis saat mendelete database: " + (err.message || String(err)));
-    } finally {
-      setIsWiping(false);
     }
   };
 
@@ -762,7 +655,7 @@ export default function App() {
           <div className="w-10 h-10 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></div>
           <div>
             <h3 className="font-bold text-slate-800 text-sm">Menghubungkan ke Firebase...</h3>
-            <p className="text-[11px] text-slate-400 mt-1 font-medium leading-relaxed">Mengunduh data performa jurnalistik dan sinkronisasi hak masuk real-time.</p>
+            <p className="text-[11px] text-slate-400 mt-1">Mengunduh data performa jurnalistik dan sinkronisasi hak masuk real-time.</p>
           </div>
         </div>
       </div>
@@ -773,15 +666,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8" id="login-layout">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm animate-bounce p-0.5">
-            <img
-              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA"
-              alt="Metaranews Logo"
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-            />
+          <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-sky-500/20 animate-bounce">
+            M
           </div>
-          <div className="text-left">
+          <div>
             <span className="font-extrabold text-slate-900 text-lg tracking-tight block leading-none">metaranews<strong className="text-sky-600">.co</strong></span>
             <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest block mt-0.5">Sistem Ruang Redaksi & Hak Akses</span>
           </div>
@@ -898,36 +786,13 @@ export default function App() {
             
             {/* Branding Logo metaranews */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm p-0.5">
-                <img
-                  src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA"
-                  alt="Metaranews Logo"
-                  className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="w-9 h-9 rounded-lg bg-sky-600 flex items-center justify-center text-white font-extrabold text-lg tracking-tighter shadow-md shadow-sky-500/20">
+                M
               </div>
               <div>
                 <div className="flex items-center gap-1.5 leading-none">
                   <span className="font-extrabold text-slate-900 text-md tracking-tight">metaranews</span>
                   <span className="text-sky-600 font-extrabold text-[9px] px-1.5 py-0.5 rounded-sm bg-sky-50 border border-sky-200">ADMIN</span>
-                  
-                  {/* Database Sync Status Badge */}
-                  {dbStatus === 'synced' ? (
-                    <span className="bg-emerald-50 text-emerald-650 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs border border-emerald-200 flex items-center gap-1" title="Terhubung stabil dengan database Cloud Firestore. Sinkronisasi real-time aktif.">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Cloud
-                    </span>
-                  ) : dbStatus === 'connecting' ? (
-                    <span className="bg-amber-50 text-amber-650 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs border border-amber-200 flex items-center gap-1">
-                      <RefreshCw className="w-2 h-2 animate-spin text-amber-600" />
-                      Mencari...
-                    </span>
-                  ) : (
-                    <span className="bg-red-50 text-red-650 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs border border-red-200 flex items-center gap-1" title="Sistem menggunakan penyimpanan lokal aman di browser ini karena firewall atau koneksi lambat.">
-                      <CloudOff className="w-2.5 h-2.5 text-red-600" />
-                      Lokal
-                    </span>
-                  )}
                 </div>
                 <span className="text-[10px] text-slate-400 font-semibold tracking-wide">Sistem Kinerja & Produktivitas Jurnalis</span>
               </div>
@@ -1097,32 +962,6 @@ export default function App() {
               >
                 <FileText className="w-4 h-4" />
                 Buat SPJ A4
-              </button>
-
-              <button
-                onClick={() => setActiveTab('nomor-surat')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  activeTab === 'nomor-surat'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
-                id="tab-nomor-surat-btn"
-              >
-                <BookOpen className="w-4 h-4" />
-                Nomor Surat
-              </button>
-
-              <button
-                onClick={() => setActiveTab('pembayaran')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
-                  activeTab === 'pembayaran'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
-                }`}
-                id="tab-pembayaran-btn"
-              >
-                <Coins className="w-4 h-4" />
-                Pembayaran
               </button>
               
               {/* Only Admin and Manager can see Wartawan & Rubrics settings */}
@@ -1370,52 +1209,6 @@ export default function App() {
                 onDeleteCategory={handleDeleteCategory}
                 onEditCategory={handleEditCategory}
               />
-
-              {/* Danger Zone: Reset Database */}
-              <div className="bg-red-50/50 border border-red-200 rounded-2xl p-5 md:p-6 space-y-4" id="danger-zone-container">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0 border border-red-200">
-                    <AlertTriangle className="w-5 h-5 text-red-650" />
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-red-800 text-sm">Zona Bahaya Redaksi (Danger Zone)</h4>
-                    <p className="text-xs text-red-600 mt-0.5 leading-relaxed">
-                      Lakukan reset sistem, menghapus total basis data, atau membersihkan data-data sisa. Tindakan ini bersifat permanen dan langsung tersinkronisasi ke seluruh database server cloud dan penyimpanan browser.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-red-200/60 pt-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-                  <div className="text-left space-y-1">
-                    <h5 className="text-xs font-bold text-slate-800">Pilih Mode Pembersihan (Reset):</h5>
-                    <p className="text-[10px] text-slate-500 leading-normal">
-                      Kredensial login bawaan (<code className="bg-slate-100 px-1 py-0.2 rounded text-slate-700 font-mono">admin</code> / <code className="bg-slate-100 px-1 py-0.2 rounded text-slate-700 font-mono">admin123</code>) akan tetap tersimpan agar Anda dapat login kembali sewaktu-waktu.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      disabled={isWiping}
-                      onClick={() => handleWipeDatabaseComplete('seed')}
-                      className="bg-white hover:bg-slate-100/80 active:bg-slate-205 text-slate-750 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-1.5 cursor-pointer select-none disabled:opacity-50"
-                    >
-                      <RotateCcw className={`w-3.5 h-3.5 text-slate-500 ${isWiping ? 'animate-spin' : ''}`} />
-                      Reset ke Template Default
-                    </button>
-                    
-                    <button
-                      type="button"
-                      disabled={isWiping}
-                      onClick={() => handleWipeDatabaseComplete('blank')}
-                      className="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-red-500/15 hover:shadow-red-500/25 select-none disabled:bg-red-400"
-                    >
-                      <Trash2 className={`w-3.5 h-3.5 text-white ${isWiping ? 'animate-pulse' : ''}`} />
-                      {isWiping ? 'Mendelete Data...' : 'Delete & Mulai dari 0 (Kosong)'}
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1474,20 +1267,6 @@ export default function App() {
               </div>
 
               <SpjCreator />
-            </div>
-          )}
-
-          {/* --- TAB CONTENT 7: TIM AGENDA BUKU NOMOR SURAT --- */}
-          {activeTab === 'nomor-surat' && (
-            <div className="space-y-6 animate-in fade-in duration-200" id="nomor-surat-tab-view">
-              <LetterAgendaBook />
-            </div>
-          )}
-
-          {/* --- TAB CONTENT 8: TIM PEMBAYARAN INVOICE & FEE INSENTIF --- */}
-          {activeTab === 'pembayaran' && (
-            <div className="space-y-6 animate-in fade-in duration-200" id="pembayaran-tab-view">
-              <InvoicePaymentTracker />
             </div>
           )}
 

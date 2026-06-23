@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -19,7 +19,7 @@ import {
   Youtube
 } from 'lucide-react';
 import { Spj, SpjItem } from '../types';
-import { db, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from '../firebase';
+import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
 
 // Helper to format date in Indonesian long style: "7 April 2026"
 const formatIndonesianDate = (dateStr: string): string => {
@@ -79,93 +79,99 @@ export default function SpjCreator() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
   
-  // Ref to hold the auto-save debounce timer
-  const saveTimeoutRef = useRef<any>(null);
-
   // Custom interactive features
   const [showSignatureStamp, setShowSignatureStamp] = useState(true);
 
-  // Setup cloud real-time listener on mount with instant offline cache fallback
+  // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
-    setIsLoading(true);
-    setDbError(null);
-
-    // 1. Instantly pull and load from Local Storage cache for super-fast load
-    const stored = localStorage.getItem('metara_spjs');
-    let localList: Spj[] = [];
-    if (stored) {
-      try {
-        localList = JSON.parse(stored) as Spj[];
-      } catch (e) {
-        console.error("Gagal mengurai cache SPJ:", e);
-      }
-    }
-
-    if (localList.length === 0) {
-      localList = [{ ...dummySpjPreset, id: 'spj-preset-1', createdAt: new Date().toISOString() }];
-    }
-
-    setSpjs(localList);
-    setSelectedSpj(prevSelected => {
-      if (prevSelected) return prevSelected;
-      return localList[0] || null;
-    });
-    setIsLoading(false);
-
-    // 2. Setup real-time background listener for "spjs" collection
-    const unsubscribe = onSnapshot(collection(db, 'spjs'), (snap) => {
-      const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
-      
-      if (remoteList.length > 0) {
-        // Master truth comes directly from Cloud DB
-        remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-        setSpjs(remoteList);
-        
+    async function loadSpjs() {
+      // 1. Instantly load from localStorage for speed
+      const stored = localStorage.getItem('metara_spjs');
+      let localList: Spj[] = [];
+      if (stored) {
         try {
-          localStorage.setItem('metara_spjs', JSON.stringify(remoteList));
+          localList = JSON.parse(stored) as Spj[];
         } catch (e) {
-          console.error("Gagal memperbarui cache SPJ:", e);
+          console.error("Failed parsing stored SPJs:", e);
         }
-        
-        setSelectedSpj(current => {
-          if (!current || current.id === 'spj-preset-1') {
-            return remoteList[0] || null;
-          }
-          const matched = remoteList.find(item => item.id === current.id);
-          return matched || remoteList[0];
-        });
-      } else {
-        // If Firestore is completely empty, register the initial default dummy preset
-        const defaultSample = { ...dummySpjPreset, id: 'spj-preset-1', createdAt: new Date().toISOString() };
-        setDoc(doc(db, 'spjs', defaultSample.id), defaultSample)
-          .catch(err => {
-            console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
-          });
       }
-    }, (err) => {
-      console.warn("Koneksi real-time SPJ terhalang, beralih penuh ke cache browser aman:", err);
-    });
 
-    return () => unsubscribe();
+      // If local list is empty, start with dummy preset
+      if (localList.length === 0) {
+        localList = [{ ...dummySpjPreset, createdAt: new Date().toISOString() }];
+      }
+
+      // Pre-populate state immediately
+      setSpjs(localList);
+      setSelectedSpj(localList[0] || null);
+
+      // 2. Fetch from Firestore to sync and merge
+      try {
+        const snap = await getDocs(collection(db, 'spjs'));
+        const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
+        
+        // Merge strategy based on unique id
+        const mergedMap = new Map<string, Spj>();
+        
+        // Load remote docs
+        remoteList.forEach(s => {
+          if (s && s.id) {
+            mergedMap.set(s.id, s);
+          }
+        });
+        
+        // Override with local docs
+        localList.forEach(s => {
+          if (s && s.id) {
+            const remoteItem = mergedMap.get(s.id);
+            if (remoteItem) {
+              const localCreated = s.createdAt || '';
+              const remoteCreated = remoteItem.createdAt || '';
+              if (remoteCreated > localCreated) {
+                mergedMap.set(s.id, remoteItem);
+              } else {
+                mergedMap.set(s.id, s);
+              }
+            } else {
+              mergedMap.set(s.id, s);
+            }
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        if (mergedList.length > 0) {
+          mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+          setSpjs(mergedList);
+          
+          if (localList[0]) {
+            const currentSelected = mergedList.find(s => s.id === localList[0].id);
+            if (currentSelected) {
+              setSelectedSpj(currentSelected);
+            } else {
+              setSelectedSpj(mergedList[0]);
+            }
+          } else {
+            setSelectedSpj(mergedList[0]);
+          }
+
+          localStorage.setItem('metara_spjs', JSON.stringify(mergedList));
+        }
+      } catch (err) {
+        console.warn("Using offline mode for SPJs:", err);
+      }
+    }
+    loadSpjs();
   }, []);
 
-  // Save changes to local state & local storage for maximum resilience
+  // Save to local storage whenever list modifications happen
   const persistList = (updated: Spj[]) => {
+    localStorage.setItem('metara_spjs', JSON.stringify(updated));
     setSpjs(updated);
-    try {
-      localStorage.setItem('metara_spjs', JSON.stringify(updated));
-    } catch (e) {
-      console.error("Gagal menyimpan ke localStorage:", e);
-    }
   };
 
   // Create a brand new empty SPJ (Invoice)
-  const handleCreateNew = async () => {
+  const handleCreateNew = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newId = `spj-${Date.now()}`;
     const newSpj: Spj = {
@@ -194,17 +200,12 @@ export default function SpjCreator() {
     const updated = [newSpj, ...spjs];
     persistList(updated);
     setSelectedSpj(newSpj);
-
-    // Save immediately to Firestore
-    try {
-      await setDoc(doc(db, 'spjs', newId), newSpj);
-    } catch (err) {
-      console.error("Gagal menyimpan SPJ baru ke Firestore secara otomatis:", err);
-    }
   };
 
   // Delete SPJ
   const handleDeleteSpj = async (id: string) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus dokumen SPJ ini secara permanen?')) return;
+    
     try {
       const updated = spjs.filter(s => s.id !== id);
       persistList(updated);
@@ -228,63 +229,49 @@ export default function SpjCreator() {
     setSaveSuccess(false);
 
     try {
-      const nowStr = new Date().toISOString();
-      const updatedSpj = {
-        ...selectedSpj,
-        updatedAt: nowStr,
-        createdAt: selectedSpj.createdAt || nowStr
-      };
-
-      const updatedList = spjs.map(s => s.id === updatedSpj.id ? updatedSpj : s);
+      const updatedList = spjs.map(s => s.id === selectedSpj.id ? selectedSpj : s);
       persistList(updatedList);
-      setSelectedSpj(updatedSpj);
 
       setSaveSuccess(true);
       setIsSaving(false);
       setTimeout(() => setSaveSuccess(false), 3000);
 
-      // Cloud Sync - await so that it's guaranteed to be in Firestore
-      await setDoc(doc(db, 'spjs', updatedSpj.id), updatedSpj);
+      // Cloud Background Sync
+      setDoc(doc(db, 'spjs', selectedSpj.id), {
+        ...selectedSpj,
+        createdAt: selectedSpj.createdAt || new Date().toISOString()
+      }).catch((syncErr) => {
+        console.warn("Firestore sync SPJ will retry in background:", syncErr);
+      });
     } catch (err: any) {
       console.error("Error saving SPJ:", err);
-      setErrorMsg('Gagal menyimpan perubahan.');
+      setErrorMsg('Gagal menyimpan perubahan secara lokal.');
       setIsSaving(false);
     }
   };
 
   // Reset to original preset sample
   const handleLoadSamplePreset = () => {
-    setShowResetConfirm(true);
+    if (!selectedSpj) return;
+    if (window.confirm('Muat ulang isi dokumen SPJ ini dengan preset contoh instan? Rincian saat ini akan diganti.')) {
+      const resetSpj: Spj = {
+        ...dummySpjPreset,
+        id: selectedSpj.id
+      };
+      setSelectedSpj(resetSpj);
+      const updated = spjs.map(s => s.id === selectedSpj.id ? resetSpj : s);
+      persistList(updated);
+    }
   };
 
   // Handle updates to selectedSpj fields
   const updateField = (key: keyof Spj, val: any) => {
     if (!selectedSpj) return;
-    const nowStr = new Date().toISOString();
-    const updated = { 
-      ...selectedSpj, 
-      [key]: val,
-      updatedAt: nowStr
-    };
+    const updated = { ...selectedSpj, [key]: val };
     setSelectedSpj(updated);
     
-    // Instantly update local list and localStorage so local operations/searches are lightning fast
-    const updatedList = spjs.map(s => s.id === selectedSpj.id ? updated : s);
-    persistList(updatedList);
-
-    // Cancel previous background save timer
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new save timer (auto-save to Firestore in background after 500ms of user typing idle)
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await setDoc(doc(db, 'spjs', updated.id), updated);
-      } catch (err) {
-        console.warn("Gagal menyimpan perubahan ke Firestore otomatis:", err);
-      }
-    }, 500);
+    // Quick update in client memory list so search works naturally
+    setSpjs(spjs.map(s => s.id === selectedSpj.id ? updated : s));
   };
 
   // Table items editor helpers
@@ -332,101 +319,78 @@ export default function SpjCreator() {
   };
 
   const renderKopSurat = () => (
-    <div className="flex justify-between items-start border-b-2 border-[#C61C23] pb-4 relative z-10 w-full text-left">
+    <div className="flex justify-between items-start border-b border-red-600 pb-3 relative z-10 w-full text-left">
       {/* Top Left: METARA LOGO */}
       <div className="flex items-start gap-4">
-        <div className="flex flex-col items-start shrink-0">
-          <span className="text-[5.5px] font-black text-slate-400 uppercase tracking-wider block mb-0.5">
-            a part of Media Nusantara Network
-          </span>
-          <div className="flex items-center gap-2.5">
-            {/* emblem */}
-            <div className="w-[52px] h-[52px] rounded-full bg-white border border-slate-100 flex items-center justify-center relative overflow-hidden shadow-sm shrink-0">
-              <img 
-                src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
-                alt="Metaranews Logo" 
-                className="w-full h-full object-contain p-1"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.style.display = 'none';
-                  const fb = e.currentTarget.parentElement?.querySelector('.fallback-svg');
-                  if (fb) fb.classList.remove('hidden');
-                }}
-              />
-              <div className="fallback-svg hidden w-full h-full flex items-center justify-center bg-[#C61C23] text-white">
-                <svg viewBox="0 0 100 100" className="w-[82%] h-[82%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                  <path d="M50,45 L50,80" />
-                </svg>
+        <div className="flex flex-col items-center shrink-0">
+          {/* Emblem */}
+          <div className="w-[52px] h-[52px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
+            <svg viewBox="0 0 100 100" className="w-[82%] h-[82%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+              <path d="M50,45 L50,80" />
+            </svg>
+            <div className="absolute -top-2.5 left-[14px] right-[14px] flex flex-col items-center">
+              <div className="w-[24px] h-[24px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
+                <div className="w-[14px] h-[14px] rounded-full border-1.5 border-white relative flex items-center justify-center">
+                  <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
+                </div>
               </div>
             </div>
-            
-            <div className="leading-none flex flex-col justify-center">
-              <span className="font-black text-[#C61C23] text-[22px] tracking-tight uppercase font-sans">Metara</span>
-              <span className="text-slate-500 font-extrabold text-[8px] uppercase tracking-widest block mt-0.5">Setara Bercerita</span>
-            </div>
+          </div>
+          {/* Metara text */}
+          <div className="text-center mt-1 leading-none">
+            <span className="font-extrabold text-[#CC0000] text-[15px] tracking-tighter block uppercase">Metara</span>
+            <span className="text-slate-800 font-extrabold text-[6.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
+            <span className="text-[4px] text-slate-400 tracking-tight block">a part of Media Nusantara Network</span>
           </div>
         </div>
       </div>
 
       {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA */}
-      <div className="text-right flex-1 pl-4 mt-1.5 pr-2">
-        <h2 className="text-[#C61C23] font-black text-[16px] leading-[1.1] uppercase font-sans tracking-tight">
-          PT. PORTAL DIGITAL MEDIA
+      <div className="text-right flex-1 pl-4">
+        <h2 className="text-[#CC0000] font-black text-[16px] leading-tight uppercase font-sans tracking-tight">
+          PT. PORTAL DIGITAL MEDIA NUSANTARA
         </h2>
-        <h2 className="text-[#C61C23] font-black text-[17px] leading-[1.1] uppercase font-sans tracking-wide">
-          NUSANTARA
-        </h2>
-        <div className="text-slate-600 text-[8.5px] space-y-0.5 mt-2 font-medium leading-normal">
-          <p>Jl. Raya Kediri - Pare No. 30</p>
-          <p>Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
-          <p className="text-slate-900 font-extrabold">Telp. 0354-4545845 - +62 811-3500-466</p>
+        <div className="text-slate-650 text-[8.5px] space-y-0.5 mt-1.5 font-medium leading-normal">
+          <p className="text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
+          <p className="text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
+          <p className="text-[#CC0000] font-bold">Telp. 0354-4545845 - +62 811-3500-466</p>
         </div>
       </div>
       
-      {/* Red corner aesthetic tab (vertical rounded bar overflowing exactly as on image) */}
-      <div className="absolute top-[-18mm] right-[-18mm] w-[35px] h-[135px] bg-[#C61C23] rounded-bl-[20px] shadow-sm pointer-events-none"></div>
+      {/* Red corner aesthetic box */}
+      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[45px] bg-[#CC0000] rounded-bl-2xl"></div>
     </div>
   );
 
   const renderFooterStripping = () => (
     <div className="relative overflow-visible w-full text-left">
-      {/* Floating red antenna-signal emblem on bottom right - resting beautifully directly on top of the red bar */}
-      <div className="absolute right-[10mm] bottom-[20px] w-[46px] h-[46px] flex items-center justify-center select-none overflow-hidden z-20 rounded-full bg-white border border-slate-200 shadow-sm pointer-events-none">
-        <img
-          src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA"
-          alt="Metaranews Logo Mini"
-          className="w-full h-full object-contain p-1"
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.style.display = 'none';
-            const fb = e.currentTarget.parentElement?.querySelector('.fallback-footer-svg');
-            if (fb) fb.classList.remove('hidden');
-          }}
-        />
-        <div className="fallback-footer-svg hidden w-full h-full flex items-center justify-center bg-[#C61C23] text-white">
-          <svg viewBox="0 0 100 100" className="w-[70%] h-[70%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-            <path d="M50,45 L50,80" />
-          </svg>
+      {/* Floating white circle with the red antenna-signal emblem on bottom right */}
+      <div className="absolute right-[18mm] bottom-[15px] w-[50px] h-[50px] flex items-center justify-center select-none overflow-visible z-20">
+        <div className="w-[44px] h-[44px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
+          <div className="w-[30px] h-[30px] rounded-full bg-[#CC0000] flex items-center justify-center relative text-white">
+            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+              <path d="M50,45 L50,80" />
+            </svg>
+            <div className="absolute -top-1.5 left-[7px] right-[7px] flex flex-col items-center">
+              <div className="w-[15px] h-[15px] rounded-full border border-white border-dashed relative flex items-center justify-center">
+                <span className="w-0.5 h-0.5 bg-yellow-300 rounded-full"></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Solid bottom Red strip bar */}
-      <div className="w-full h-9 bg-[#C61C23] flex items-center justify-start px-[18mm] relative z-10 text-white font-sans text-[8.5px] tracking-wider font-semibold">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Instagram className="w-3.5 h-3.5 stroke-[2.2]" />
-            <Facebook className="w-3.5 h-3.5 stroke-[2.2]" />
-            <Youtube className="w-3.5 h-3.5 stroke-[2.2]" />
-            {/* Custom SVG TikTok Icon */}
-            <svg className="w-3 h-3 fill-white stroke-none" viewBox="0 0 24 24">
-              <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08.86.37 1.7.9 2.4 1.13 1.43 2.87 2.23 4.67 2.37v3.91c-1.12-.04-2.22-.38-3.18-1-.5-.32-.93-.72-1.3-1.18-.04 2.84-.01 5.69-.02 8.53-.06 2-.6 4-1.78 5.6-1.8 2.5-4.8 3.82-7.85 3.32-2.8-.45-5.2-2.43-5.94-5.18-.84-3.1.5-6.55 3.3-7.98 1.16-.6 2.48-.84 3.78-.69v4.03c-.8-.23-1.68-.08-2.35.43-.88.66-1.25 1.81-1.12 2.89.14 1.18.99 2.22 2.12 2.5a3.1 3.1 0 0 0 3.83-2.1c.14-.52.16-1.07.15-1.61V0h.08z" />
-            </svg>
+      <div className="w-full h-8 bg-[#CC0000] flex items-center justify-start px-[18mm] relative z-10 text-white font-sans text-[8px] tracking-wide font-medium">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            <Instagram className="w-3.5 h-3.5 stroke-2" />
+            <Facebook className="w-3.5 h-3.5 stroke-2" />
+            <Youtube className="w-3.5 h-3.5 stroke-2" />
           </div>
-          <span className="font-black uppercase tracking-widest text-[8.5px]">METARANEWS</span>
+          <span className="font-extrabold uppercase tracking-widest text-[8px]">METARANEWS</span>
         </div>
       </div>
     </div>
@@ -450,7 +414,7 @@ export default function SpjCreator() {
           </div>
           <button
             onClick={handleCreateNew}
-            className="flex items-center gap-1 bg-[#C61C23] hover:bg-red-800 text-white py-1.5 px-3 rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-1 bg-[#CC0000] hover:bg-red-700 text-white py-1.5 px-3 rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer"
             id="create-new-spj-btn"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -466,75 +430,57 @@ export default function SpjCreator() {
             placeholder="Cari penerima atau nomor SPJ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs focus:ring-1 focus:ring-[#C61C23] focus:border-[#C61C23] outline-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs focus:ring-1 focus:ring-[#CC0000] focus:border-[#CC0000] outline-none"
           />
         </div>
 
         {/* SPJ List Container */}
         <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1" id="spj-list-scroll">
-          {isLoading ? (
-            <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
-              <RefreshCw className="w-5 h-5 animate-spin text-[#C61C23]" />
-              <span>Memuat arsip SPJ dari cloud...</span>
-            </div>
-          ) : dbError ? (
-            <div className="p-6 text-center text-xs text-red-500 bg-red-50/50 m-2 rounded-xl border border-red-100 flex flex-col items-center justify-center gap-2">
-              <AlertCircle className="w-5 h-5 text-[#C61C23]" />
-              <span className="font-bold">Gagal Terhubung</span>
-              <span className="text-[10px] text-slate-500 leading-normal">
-                Sistem gagal mengakses database cloud Firestore. Pastikan Firestore rules diperbaiki atau koneksi internet stabil.
-              </span>
-              <span className="text-[8px] font-mono text-red-600 border border-red-100 p-1 rounded bg-white max-w-full overflow-hidden truncate">
-                {dbError}
-              </span>
-            </div>
-          ) : (
-            filteredSpjs.map(s => {
-              const isSelected = selectedSpj && selectedSpj.id === s.id;
-              const total = s.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-              return (
-                <div
-                  key={s.id}
-                  className={`p-3 rounded-xl border transition-all text-left flex justify-between items-start cursor-pointer relative group ${
-                    isSelected 
-                      ? 'border-[#C61C23] bg-red-50/40 shadow-xs' 
-                      : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
-                  }`}
-                  onClick={() => setSelectedSpj(s)}
-                >
-                  <div className="space-y-1 max-w-[80%]">
-                    <div className="font-black text-xs text-slate-800 line-clamp-1 uppercase leading-none">
-                      {s.recipientName || 'Draft SPJ'}
-                    </div>
-                    <div className="text-[9.5px] text-slate-500 font-mono line-clamp-1">
-                      {s.invoiceNumber}
-                    </div>
-                    <div className="text-[9.5px] text-[#C61C23] font-black font-mono">
-                      Rp {formatRupiah(total)}
-                    </div>
+          {filteredSpjs.map(s => {
+            const isSelected = selectedSpj && selectedSpj.id === s.id;
+            const total = s.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+            return (
+              <div
+                key={s.id}
+                className={`p-3 rounded-xl border transition-all text-left flex justify-between items-start cursor-pointer relative group ${
+                  isSelected 
+                    ? 'border-[#CC0000] bg-red-50/40 shadow-xs' 
+                    : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
+                }`}
+                onClick={() => setSelectedSpj(s)}
+              >
+                <div className="space-y-1 max-w-[80%]">
+                  <div className="font-black text-xs text-slate-800 line-clamp-1 uppercase leading-none">
+                    {s.recipientName || 'Draft SPJ'}
                   </div>
-
-                  <div className="flex flex-col items-end justify-between h-full space-y-3">
-                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
-                      {formatIndonesianDate(s.date)}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTargetId(s.id);
-                      }}
-                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                      title="Hapus Dokumen"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="text-[9.5px] text-slate-500 font-mono line-clamp-1">
+                    {s.invoiceNumber}
+                  </div>
+                  <div className="text-[9.5px] text-[#CC0000] font-black font-mono">
+                    Rp {formatRupiah(total)}
                   </div>
                 </div>
-              );
-            })
-          )}
 
-          {!isLoading && !dbError && filteredSpjs.length === 0 && (
+                <div className="flex flex-col items-end justify-between h-full space-y-3">
+                  <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
+                    {formatIndonesianDate(s.date)}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSpj(s.id);
+                    }}
+                    className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    title="Hapus Dokumen"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredSpjs.length === 0 && (
             <div className="p-8 text-center text-xs text-slate-400 italic">
               {searchQuery ? 'Tidak ada hasil pencarian.' : 'Belum ada dokumen SPJ.'}
             </div>
@@ -545,13 +491,13 @@ export default function SpjCreator() {
       {/* 2. RIGHT COLUMN: WORKSPACE LAYOUT (xl:col-span-8) */}
       <div className="xl:col-span-8 space-y-6" id="spj-editor-preview-grid">
         
-         {/* EDIT FILE FORM PANEL */}
+        {/* EDIT FILE FORM PANEL */}
         {selectedSpj ? (
           <div className="w-full space-y-4 text-left no-print-element" id="spj-editor-inputs-panel">
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-4">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h3 className="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-[#C61C23]" />
+                  <FileText className="w-4 h-4 text-[#CC0000]" />
                   Pengaturan SPJ
                 </h3>
                 <div className="flex gap-2">
@@ -574,7 +520,7 @@ export default function SpjCreator() {
                     type="text"
                     value={selectedSpj.invoiceNumber}
                     onChange={(e) => updateField('invoiceNumber', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#C61C23]"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#CC0000]"
                     placeholder="Contoh: 210/SPJ/METARA/IV/2026"
                   />
                 </div>
@@ -587,14 +533,14 @@ export default function SpjCreator() {
                       type="date"
                       value={selectedSpj.date}
                       onChange={(e) => updateField('date', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#C61C23] font-mono"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-[#CC0000] font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-100 space-y-2">
                   <p className="font-black text-slate-700 text-[10px] uppercase tracking-wide flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-[#C61C23]" />
+                    <User className="w-3.5 h-3.5 text-[#CC0000]" />
                     Pihak Penerima (Kepada Yth)
                   </p>
                   
@@ -605,7 +551,7 @@ export default function SpjCreator() {
                       type="text"
                       value={selectedSpj.recipientName}
                       onChange={(e) => updateField('recipientName', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#C61C23] font-bold"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#CC0000] font-bold"
                       placeholder="Contoh: KEPALA SATPOL PP KABUPATEN KEDIRI"
                     />
                   </div>
@@ -617,7 +563,7 @@ export default function SpjCreator() {
                       value={selectedSpj.recipientAddress}
                       onChange={(e) => updateField('recipientAddress', e.target.value)}
                       rows={2}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#C61C23] font-medium leading-relaxed resize-none"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 outline-none focus:border-[#CC0000] font-medium leading-relaxed resize-none"
                       placeholder="Contoh: Jl. Soekarno-Hatta No. 1, Doko..."
                     />
                   </div>
@@ -627,13 +573,13 @@ export default function SpjCreator() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <label className="font-black text-slate-700 uppercase tracking-wide text-[10px] flex items-center gap-1">
-                      <Layers className="w-3.5 h-3.5 text-[#C61C23]" />
+                      <Layers className="w-3.5 h-3.5 text-[#CC0000]" />
                       Rincian Layanan / Program
                     </label>
                     <button
                       type="button"
                       onClick={addSpjItem}
-                      className="text-[#C61C23] hover:text-red-850 font-bold text-[10px] flex items-center gap-0.5"
+                      className="text-[#CC0000] hover:text-red-700 font-bold text-[10px] flex items-center gap-0.5"
                     >
                       <Plus className="w-3.5 h-3.5" /> Tambah Baris
                     </button>
@@ -663,7 +609,7 @@ export default function SpjCreator() {
                               value={item.description}
                               onChange={(e) => updateSpjItem(item.id, 'description', e.target.value)}
                               rows={2}
-                              className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none text-xs focus:border-[#C61C23] leading-snug resize-none font-sans"
+                              className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none text-xs focus:border-[#CC0000] leading-snug resize-none font-sans"
                               placeholder="Deskripsi Program / Publikasi"
                             />
                           </div>
@@ -675,7 +621,7 @@ export default function SpjCreator() {
                                 type="number"
                                 value={item.quantity}
                                 onChange={(e) => updateSpjItem(item.id, 'quantity', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-[#C61C23] text-center"
+                                className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-[#CC0000] text-center"
                                 min={1}
                               />
                             </div>
@@ -685,7 +631,7 @@ export default function SpjCreator() {
                                 type="text"
                                 value={item.period}
                                 onChange={(e) => updateSpjItem(item.id, 'period', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-[#C61C23] text-center font-bold"
+                                className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-[#CC0000] text-center font-bold"
                                 placeholder="April 2026"
                               />
                             </div>
@@ -695,7 +641,7 @@ export default function SpjCreator() {
                                 type="number"
                                 value={item.price}
                                 onChange={(e) => updateSpjItem(item.id, 'price', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-[#C61C23] text-right font-mono"
+                                className="w-full bg-white border border-slate-200 rounded px-2 py-1 outline-none focus:border-[#CC0000] text-right font-mono"
                                 min={0}
                               />
                             </div>
@@ -709,7 +655,7 @@ export default function SpjCreator() {
                 {/* Bank details input */}
                 <div className="bg-slate-50/55 p-3 rounded-xl border border-slate-100 space-y-2">
                   <p className="font-black text-slate-700 text-[10px] uppercase tracking-wide flex items-center gap-1">
-                    <CreditCard className="w-3.5 h-3.5 text-[#C61C23]" />
+                    <CreditCard className="w-3.5 h-3.5 text-[#CC0000]" />
                     Informasi Pembayaran (Bank)
                   </p>
                   <div className="space-y-1">
@@ -717,7 +663,7 @@ export default function SpjCreator() {
                       type="text"
                       value={selectedSpj.bankName}
                       onChange={(e) => updateField('bankName', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#C61C23] font-bold"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#CC0000] font-bold"
                       placeholder="Nama Bank"
                     />
                   </div>
@@ -726,7 +672,7 @@ export default function SpjCreator() {
                       type="text"
                       value={selectedSpj.bankAccount}
                       onChange={(e) => updateField('bankAccount', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#C61C23] font-mono"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#CC0000] font-mono"
                       placeholder="Nomor Rekening"
                     />
                   </div>
@@ -735,7 +681,7 @@ export default function SpjCreator() {
                       type="text"
                       value={selectedSpj.bankOwner}
                       onChange={(e) => updateField('bankOwner', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#C61C23] font-semibold"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#CC0000] font-semibold"
                       placeholder="Pemilik Rekening"
                     />
                   </div>
@@ -744,7 +690,7 @@ export default function SpjCreator() {
                 {/* Signer settings input */}
                 <div className="bg-slate-50/55 p-3 rounded-xl border border-slate-100 space-y-2">
                   <p className="font-black text-slate-700 text-[10px] uppercase tracking-wide flex items-center gap-1">
-                    <User className="w-3.5 h-3.5 text-[#C61C23]" />
+                    <User className="w-3.5 h-3.5 text-[#CC0000]" />
                     Tanda Tangan & Pengesahan
                   </p>
                   
@@ -754,7 +700,7 @@ export default function SpjCreator() {
                       id="showSignStampSpj"
                       checked={showSignatureStamp}
                       onChange={(e) => setShowSignatureStamp(e.target.checked)}
-                      className="rounded border-slate-300 focus:ring-[#C61C23] text-[#C61C23] cursor-pointer"
+                      className="rounded border-slate-300 focus:ring-[#CC0000] text-[#CC0000] cursor-pointer"
                     />
                     <label htmlFor="showSignStampSpj" className="font-bold text-slate-600 text-[10px] cursor-pointer">
                       Sertakan Stempel Basah & Tanda Tangan
@@ -766,14 +712,14 @@ export default function SpjCreator() {
                       type="text"
                       value={selectedSpj.signerName}
                       onChange={(e) => updateField('signerName', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#C61C23] font-bold"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#CC0000] font-bold"
                       placeholder="Nama Penandatangan"
                     />
                     <input
                       type="text"
                       value={selectedSpj.signerTitle}
                       onChange={(e) => updateField('signerTitle', e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#C61C23]"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#CC0000]"
                       placeholder="Jabatan"
                     />
                   </div>
@@ -801,7 +747,7 @@ export default function SpjCreator() {
                   <button
                     onClick={handleSaveSpj}
                     disabled={isSaving}
-                    className="flex justify-center items-center gap-1.5 bg-[#C61C23] hover:bg-red-800 text-white rounded-lg py-2.5 px-4 font-bold text-xs shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                    className="flex justify-center items-center gap-1.5 bg-[#CC0000] hover:bg-red-700 text-white rounded-lg py-2.5 px-4 font-bold text-xs shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {isSaving ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -813,7 +759,7 @@ export default function SpjCreator() {
 
                   <button
                     onClick={handlePrint}
-                    className="flex justify-center items-center gap-1.5 border border-[#C61C23] text-[#C61C23] hover:bg-red-50/50 rounded-lg py-2.5 px-4 font-bold text-xs transition-colors cursor-pointer"
+                    className="flex justify-center items-center gap-1.5 border border-[#CC0000] text-[#CC0000] hover:bg-red-50/50 rounded-lg py-2.5 px-4 font-bold text-xs transition-colors cursor-pointer"
                   >
                     <Printer className="w-4 h-4" />
                     Cetak / Simpan PDF
@@ -825,8 +771,8 @@ export default function SpjCreator() {
         ) : null}
 
         {/* 3. RIGHT PANEL: LIVE PREVIEW LAYOUT WITH PRINT SIMULATION */}
-        <div className="space-y-4 text-left w-full" id="spj-live-preview-box">
-          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block no-print-element">
+        <div className="space-y-4 no-print-element text-left w-full" id="spj-live-preview-box">
+          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block">
             Pratinjau Hasil Cetak Lembar A4 (Live Preview)
           </span>
           <div className="flex flex-col items-center justify-start bg-slate-200/50 rounded-2xl border border-slate-250 p-4 md:p-8 overflow-x-auto min-h-[700px] w-full" id="spj-live-preview-container">
@@ -910,49 +856,49 @@ export default function SpjCreator() {
                             </div>
                           </div>
 
-                          {/* --- LARGE MAIN TABLE WITH DETAILED BILLING ROWS (ROUNDED CARD GRID) --- */}
-                          <div className="mt-9 rounded-[28px] overflow-hidden border border-slate-200/50 shadow-xs relative">
-                            <table className="w-full border-none border-collapse text-xs text-left text-slate-800 font-sans">
+                          {/* --- LARGE MAIN TABLE WITH DETAILED BILLING ROWS --- */}
+                          <div className="mt-9">
+                            <table className="w-full border-collapse border border-slate-200 text-xs text-left text-slate-800 font-sans">
                               <thead>
-                                <tr className="bg-[#6B1315] text-white font-black text-center text-[10.5px] uppercase tracking-wider">
-                                  <th className="py-4.5 px-5 w-[42%] text-left font-black tracking-wide border-none">DESKRIPSI</th>
-                                  <th className="py-4.5 px-3 w-[10%] text-center font-black tracking-wide border-none">QTY</th>
-                                  <th className="py-4.5 px-3 w-[18%] text-center font-black tracking-wide border-none">PERIODE TAYANG</th>
-                                  <th className="py-4.5 px-4 w-[15%] text-center font-black tracking-wide border-none">HARGA</th>
-                                  <th className="py-4.5 px-5 w-[15%] text-right font-black tracking-wide border-none">TOTAL</th>
+                                <tr className="bg-[#851D1D] text-white font-black text-center text-[10px] uppercase tracking-wider">
+                                  <th className="border border-slate-200 py-[11px] px-3 w-[45%] text-left font-extrabold">DESKRIPSI</th>
+                                  <th className="border border-slate-200 py-[11px] px-2 w-[11%] font-extrabold">QTY</th>
+                                  <th className="border border-slate-200 py-[11px] px-2 w-[18%] font-extrabold">PERIODE TAYANG</th>
+                                  <th className="border border-slate-200 py-[11px] px-3 w-[23%] text-center font-extrabold">HARGA</th>
+                                  <th className="border border-slate-200 py-[11px] px-3 w-[23%] text-right font-extrabold">TOTAL</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {selectedSpj.items.map((item, idx) => (
-                                  <tr key={item.id} className="align-top border-none font-sans">
-                                    <td className="bg-[#F4F4F4] p-4 text-left font-bold text-slate-800 leading-relaxed whitespace-pre-line text-[11px] border-none">
+                                  <tr key={item.id} className="min-h-[140px] align-top">
+                                    <td className="border border-slate-200 p-3 bg-slate-50/50 font-bold text-slate-800 leading-relaxed whitespace-pre-line text-[11px]">
                                       {item.description}
                                     </td>
-                                    <td className="bg-[#EDEDED] p-4 text-center font-extrabold text-slate-800 text-[11px] border-none">
+                                    <td className="border border-slate-200 p-3 text-center font-bold text-slate-800 text-[11px]">
                                       {item.quantity}
                                     </td>
-                                    <td className="bg-[#F4F4F4] p-4 text-center font-bold text-slate-700 text-[11px] border-none">
+                                    <td className="border border-slate-200 p-3 text-center font-bold text-slate-700 text-[11px]">
                                       {item.period}
                                     </td>
-                                    <td className="bg-[#EDEDED] p-4 text-center font-bold text-slate-700 font-sans text-[11px] whitespace-nowrap border-none">
+                                    <td className="border border-slate-200 p-3 text-center font-bold text-slate-700 font-sans text-[11px] whitespace-nowrap">
                                       Rp. {formatRupiah(item.price)},-
                                     </td>
-                                    <td className="bg-[#F4F4F4] px-5 py-4 text-right font-black text-slate-950 font-sans text-[11.5px] whitespace-nowrap border-none">
+                                    <td className="border border-slate-200 p-3 text-right font-black text-slate-900 font-sans text-[11px] whitespace-nowrap">
                                       Rp. {formatRupiah(item.quantity * item.price)},-
                                     </td>
                                   </tr>
                                 ))}
                                 
-                                {/* Dynamic vertical color filling bars for remaining visual space */}
-                                {Array.from({ length: Math.max(0, 3 - selectedSpj.items.length) }).map((_, spacerIdx) => (
-                                  <tr key={`spacer-${spacerIdx}`} className="h-20 border-none">
-                                    <td className="bg-[#F4F4F4] px-4 py-3 border-none"></td>
-                                    <td className="bg-[#EDEDED] px-4 py-3 border-none"></td>
-                                    <td className="bg-[#F4F4F4] px-4 py-3 border-none"></td>
-                                    <td className="bg-[#EDEDED] px-4 py-3 border-none"></td>
-                                    <td className="bg-[#F4F4F4] px-5 py-3 border-none"></td>
+                                {/* Padding row to elongate table height naturally just like format */}
+                                {selectedSpj.items.length === 1 && (
+                                  <tr className="h-28">
+                                    <td className="border border-slate-200 bg-slate-50/50"></td>
+                                    <td className="border border-slate-200"></td>
+                                    <td className="border border-slate-200"></td>
+                                    <td className="border border-slate-200"></td>
+                                    <td className="border border-slate-200"></td>
                                   </tr>
-                                ))}
+                                )}
                               </tbody>
                             </table>
                           </div>
@@ -978,7 +924,7 @@ export default function SpjCreator() {
                               </div>
 
                               {/* Big Bright Red highlight block for Grand Total */}
-                              <div className="w-full bg-[#C61C23] py-3.5 px-6 rounded-md select-all text-white font-black text-center flex items-center justify-center shadow-sm relative overflow-hidden shrink-0">
+                              <div className="w-full bg-[#CC0000] py-3.5 px-6 rounded-md select-all text-white font-black text-center flex items-center justify-center shadow-sm relative overflow-hidden shrink-0">
                                 <span className="text-[17px] mr-1 font-sans text-white font-black">RP.</span>
                                 <span className="text-[25px] leading-none font-sans text-white font-extrabold tracking-tight">
                                   {formatRupiah(getGrandTotal())}
@@ -1065,6 +1011,11 @@ export default function SpjCreator() {
                             </div>
                           </div>
 
+                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
+                          <div className="print:hidden mt-14 relative overflow-visible -mx-[18mm]">
+                            {renderFooterStripping()}
+                          </div>
+
                         </div>
                       </td>
                     </tr>
@@ -1079,11 +1030,6 @@ export default function SpjCreator() {
                     </tr>
                   </tfoot>
                 </table>
-
-                {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (Locked to the bottom of the A4 paper card) */}
-                <div className="print:hidden absolute bottom-0 left-0 right-0 z-20">
-                  {renderFooterStripping()}
-                </div>
 
               </div>
               
@@ -1100,83 +1046,6 @@ export default function SpjCreator() {
         </div>
 
       </div>
-
-      {/* 4. MODAL POPUPS FOR COMPATIBLE IFRAME SAFE DIALOGS */}
-      {deleteTargetId && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
-          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-800 mb-2">Hapus Dokumen SPJ?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Apakah Anda yakin ingin menghapus dokumen SPJ ini secara permanen dari penyimpanan Firestore Cloud? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => setDeleteTargetId(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const id = deleteTargetId;
-                  setDeleteTargetId(null);
-                  await handleDeleteSpj(id);
-                }}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors cursor-pointer"
-              >
-                Hapus Permanen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
-          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6 rotate-45" />
-            </div>
-            <h3 className="text-base font-bold text-slate-800 mb-2">Reset Contoh SPJ?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Apakah Anda yakin ingin mengatur ulang dokumen SPJ ini dengan preset contoh asli? Seluruh rincian data saat ini akan digantikan sepenuhnya.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowResetConfirm(false);
-                  if (selectedSpj) {
-                    const resetSpj: Spj = {
-                      ...dummySpjPreset,
-                      id: selectedSpj.id
-                    };
-                    setSelectedSpj(resetSpj);
-                    const updated = spjs.map(s => s.id === selectedSpj.id ? resetSpj : s);
-                    persistList(updated);
-                  }
-                }}
-                className="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors cursor-pointer"
-              >
-                Muat Ulang
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

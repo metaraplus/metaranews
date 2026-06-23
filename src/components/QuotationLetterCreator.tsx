@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -13,11 +13,10 @@ import {
   Coins, 
   AlertCircle, 
   Check, 
-  RefreshCw,
-  Sparkles
+  RefreshCw 
 } from 'lucide-react';
 import { Quotation, QuotationItem } from '../types';
-import { db, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from '../firebase';
+import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
 
 // Helper to format date in Indonesian long style: "21 Juni 2026"
 const formatIndonesianDate = (dateStr: string): string => {
@@ -56,13 +55,6 @@ export default function QuotationLetterCreator() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
-
-  // Ref to hold the auto-save debounce timer
-  const saveTimeoutRef = useRef<any>(null);
 
   // Sample Preset to load if empty or requested
   const dummyQuotationPreset: Quotation = {
@@ -109,83 +101,97 @@ export default function QuotationLetterCreator() {
     showVat: true
   };
 
-  // Setup cloud real-time listener on mount with instant offline cache fallback
+  // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
-    setIsLoading(true);
-    setDbError(null);
-
-    // 1. Instantly pull and load from Local Storage cache for super-fast load
-    const stored = localStorage.getItem('metara_quotations');
-    let localList: Quotation[] = [];
-    if (stored) {
-      try {
-        localList = JSON.parse(stored) as Quotation[];
-      } catch (e) {
-        console.error("Gagal mengurai cache quotations:", e);
-      }
-    }
-
-    if (localList.length === 0) {
-      localList = [{ ...dummyQuotationPreset, id: 'q-sample-preset', createdAt: new Date().toISOString() }];
-    }
-
-    setQuotations(localList);
-    setSelectedQuote(prevSelected => {
-      if (prevSelected) return prevSelected;
-      return localList[0] || null;
-    });
-    setIsLoading(false);
-
-    // 2. Setup real-time background listener for "quotations" collection
-    const unsubscribe = onSnapshot(collection(db, 'quotations'), (snap) => {
-      const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
-      
-      if (remoteList.length > 0) {
-        // Master truth comes directly from Cloud DB
-        remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-        setQuotations(remoteList);
-        
+    async function loadQuotations() {
+      // 1. Instantly load from localStorage so the UI is immediately populated and responsive
+      const stored = localStorage.getItem('metara_quotations');
+      let localList: Quotation[] = [];
+      if (stored) {
         try {
-          localStorage.setItem('metara_quotations', JSON.stringify(remoteList));
+          localList = JSON.parse(stored) as Quotation[];
         } catch (e) {
-          console.error("Gagal memperbarui cache quotations:", e);
+          console.error("Failed parsing stored quotations:", e);
         }
-        
-        // Auto-select or preserve currently selected item
-        setSelectedQuote(current => {
-          if (!current || current.id === 'q-sample-preset') {
-            return remoteList[0] || null;
-          }
-          const matched = remoteList.find(item => item.id === current.id);
-          return matched || remoteList[0];
-        });
-      } else {
-        // If Firestore is completely empty, register the initial default dummy preset
-        const defaultSample = { ...dummyQuotationPreset, id: 'q-sample-preset', createdAt: new Date().toISOString() };
-        setDoc(doc(db, 'quotations', defaultSample.id), defaultSample)
-          .catch(err => {
-            console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
-          });
       }
-    }, (err) => {
-      console.warn("Koneksi real-time quotations terhalang, beralih penuh ke cache browser aman:", err);
-    });
 
-    return () => unsubscribe();
+      // If local list is empty, start with dummy preset
+      if (localList.length === 0) {
+        localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
+      }
+
+      // Pre-populate state immediately
+      setQuotations(localList);
+      setSelectedQuote(localList[0] || null);
+
+      // 2. Fetch from Firestore to sync and merge any remote documents
+      try {
+        const snap = await getDocs(collection(db, 'quotations'));
+        const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
+        
+        // Merge strategy based on unique id
+        const mergedMap = new Map<string, Quotation>();
+        
+        // Load remote docs first
+        remoteList.forEach(q => {
+          if (q && q.id) {
+            mergedMap.set(q.id, q);
+          }
+        });
+        
+        // Override with local docs (local is usually the absolute source of truth for the active session, or we can merge newest first)
+        localList.forEach(q => {
+          if (q && q.id) {
+            const remoteItem = mergedMap.get(q.id);
+            if (remoteItem) {
+              // Both exist, let's keep the one with newer createdAt or just prefer the local one if isSaving was pending
+              const localCreated = q.createdAt || '';
+              const remoteCreated = remoteItem.createdAt || '';
+              if (remoteCreated > localCreated) {
+                mergedMap.set(q.id, remoteItem);
+              } else {
+                mergedMap.set(q.id, q);
+              }
+            } else {
+              mergedMap.set(q.id, q);
+            }
+          }
+        });
+
+        const mergedList = Array.from(mergedMap.values());
+        if (mergedList.length > 0) {
+          mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+          setQuotations(mergedList);
+          
+          // Try to retain the current selection if it still exists
+          if (localList[0]) {
+            const currentSelected = mergedList.find(q => q.id === localList[0].id);
+            if (currentSelected) {
+              setSelectedQuote(currentSelected);
+            } else {
+              setSelectedQuote(mergedList[0]);
+            }
+          } else {
+            setSelectedQuote(mergedList[0]);
+          }
+
+          localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
+        }
+      } catch (err) {
+        console.warn("Using offline mode as Firestore is unreachable during startup:", err);
+      }
+    }
+    loadQuotations();
   }, []);
 
-  // Save changes to local state & local storage for maximum resilience
+  // Save to local storage whenever list modifications happen
   const persistList = (updated: Quotation[]) => {
+    localStorage.setItem('metara_quotations', JSON.stringify(updated));
     setQuotations(updated);
-    try {
-      localStorage.setItem('metara_quotations', JSON.stringify(updated));
-    } catch (e) {
-      console.error("Gagal menyimpan ke localStorage:", e);
-    }
   };
 
   // Create a brand new empty quotation letter
-  const handleCreateNew = async () => {
+  const handleCreateNew = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newId = `q-${Date.now()}`;
     const newLetter: Quotation = {
@@ -206,7 +212,7 @@ export default function QuotationLetterCreator() {
           description: 'Meliput kegiatan lapangan dan publikasi artikel berita',
           quantity: 1,
           unit: 'Paket',
-          price: 1500000
+          price: 1500004
         }
       ],
       bodyClosing: 'Demikian penawaran ini kami ajukan. Atas perhatian dan kerjasamanya kami haturkan terima kasih.',
@@ -220,17 +226,12 @@ export default function QuotationLetterCreator() {
     const updated = [newLetter, ...quotations];
     persistList(updated);
     setSelectedQuote(newLetter);
-
-    // Save immediately to Firestore
-    try {
-      await setDoc(doc(db, 'quotations', newId), newLetter);
-    } catch (err) {
-      console.error("Gagal menyimpan surat baru ke Firestore secara otomatis:", err);
-    }
   };
 
   // Delete quotation
   const handleDelete = async (id: string) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus surat penawaran ini secara permanen?')) return;
+    
     try {
       const updated = quotations.filter(q => q.id !== id);
       persistList(updated);
@@ -254,65 +255,51 @@ export default function QuotationLetterCreator() {
     setSaveSuccess(false);
 
     try {
-      const nowStr = new Date().toISOString();
-      const updatedQuote = {
-        ...selectedQuote,
-        updatedAt: nowStr,
-        createdAt: selectedQuote.createdAt || nowStr
-      };
-
       // 1. Instantly write to LocalState & LocalStorage
-      const updatedList = quotations.map(q => q.id === updatedQuote.id ? updatedQuote : q);
+      const updatedList = quotations.map(q => q.id === selectedQuote.id ? selectedQuote : q);
       persistList(updatedList);
-      setSelectedQuote(updatedQuote);
 
       // 2. Clear loading and trigger success toast instantly so the UI is lightning-fast!
       setSaveSuccess(true);
       setIsSaving(false);
       setTimeout(() => setSaveSuccess(false), 3000);
 
-      // 3. Sync to Cloud Firestore - await the save so it is guaranteed on remote DB
-      await setDoc(doc(db, 'quotations', updatedQuote.id), updatedQuote);
+      // 3. Sync to Cloud Firestore in the background without blocking the UI rendering cycle
+      setDoc(doc(db, 'quotations', selectedQuote.id), {
+        ...selectedQuote,
+        createdAt: selectedQuote.createdAt || new Date().toISOString()
+      }).catch((syncErr) => {
+        console.warn("Firestore sync will retry in background:", syncErr);
+      });
     } catch (err: any) {
       console.error("Error saving quotation:", err);
-      setErrorMsg('Gagal menyimpan perubahan.');
+      setErrorMsg('Gagal menyimpan perubahan secara lokal.');
       setIsSaving(false);
     }
   };
 
   // Trigger quick sample reset
   const handleLoadSamplePreset = () => {
-    setShowResetConfirm(true);
+    if (!selectedQuote) return;
+    if (window.confirm('Muat ulang isi surat ini dengan preset contoh instan? Artikel & rincian saat ini akan diganti.')) {
+      const resetQuote: Quotation = {
+        ...dummyQuotationPreset,
+        id: selectedQuote.id // Keep the current ID
+      };
+      setSelectedQuote(resetQuote);
+      const updated = quotations.map(q => q.id === selectedQuote.id ? resetQuote : q);
+      persistList(updated);
+    }
   };
 
   // Handle nested updates for selectedQuote
   const updateField = (key: keyof Quotation, val: any) => {
     if (!selectedQuote) return;
-    const nowStr = new Date().toISOString();
-    const updated = { 
-      ...selectedQuote, 
-      [key]: val,
-      updatedAt: nowStr
-    };
+    const updated = { ...selectedQuote, [key]: val };
     setSelectedQuote(updated);
     
-    // Instantly update local list and localStorage so local operations/searches are lightning fast
-    const updatedList = quotations.map(q => q.id === selectedQuote.id ? updated : q);
-    persistList(updatedList);
-
-    // Cancel previous background save timer
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    // Set new save timer (auto-save to Firestore in background after 500ms of user typing idle)
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        await setDoc(doc(db, 'quotations', updated.id), updated);
-      } catch (err) {
-        console.warn("Gagal menyimpan perubahan ke Firestore otomatis:", err);
-      }
-    }, 500);
+    // Update temporary in memory list without force savings in firebase immediately (user clicks Save)
+    setQuotations(quotations.map(q => q.id === selectedQuote.id ? updated : q));
   };
 
   // Handle items inside pricing table
@@ -375,25 +362,21 @@ export default function QuotationLetterCreator() {
       <div className="flex items-start gap-4">
         {/* Logo container */}
         <div className="flex flex-col items-center">
-          {/* Red Signal Emblem replaced with new logo */}
-          <div className="w-[62px] h-[62px] rounded-full bg-white border border-slate-100 flex items-center justify-center relative overflow-hidden shadow-xs shrink-0">
-            <img 
-              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
-              alt="Metaranews Logo" 
-              className="w-full h-full object-contain p-1"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.style.display = 'none';
-                const fb = e.currentTarget.parentElement?.querySelector('.fallback-svg');
-                if (fb) fb.classList.remove('hidden');
-              }}
-            />
-            <div className="fallback-svg hidden w-full h-full flex items-center justify-center bg-[#CC0000] text-white">
-              <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                <path d="M50,45 L50,80" />
-              </svg>
+          {/* Red Signal Emblem */}
+          <div className="w-[62px] h-[62px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
+            {/* Inside white stylized 'M' curve line */}
+            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
+              <path d="M50,45 L50,80" />
+            </svg>
+            {/* Top antenna signals antenna circles radiating */}
+            <div className="absolute -top-3 left-[17px] right-[17px] flex flex-col items-center">
+              {/* concentric signal circles */}
+              <div className="w-[28px] h-[28px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
+                <div className="w-[18px] h-[18px] rounded-full border-1.5 border-white relative flex items-center justify-center">
+                  <span className="w-1.5 h-1.5 bg-yellow-300 rounded-full"></span>
+                </div>
+              </div>
             </div>
           </div>
           {/* Metara wordmark */}
@@ -424,24 +407,20 @@ export default function QuotationLetterCreator() {
     <div className="relative overflow-visible w-full">
       {/* Tiny signal antenna tower logo printed in the lower right bottom corner exactly like image */}
       <div className="absolute right-[18mm] bottom-[15px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible">
-        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
-          <img
-            src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA"
-            alt="Metaranews Logo Mini"
-            className="w-full h-full object-contain p-1"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.style.display = 'none';
-              const fb = e.currentTarget.parentElement?.querySelector('.fallback-footer-svg');
-              if (fb) fb.classList.remove('hidden');
-            }}
-          />
-          <div className="fallback-footer-svg hidden w-full h-full flex items-center justify-center bg-[#CC0000] text-white">
+        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
+          {/* Red Antenna graphic waves */}
+          <div className="w-[32px] h-[32px] rounded-full bg-[#CC0000] flex items-center justify-center relative shadow-3xs text-white">
+            {/* waves concentric path */}
             <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
               <path d="M50,45 L50,80" />
             </svg>
+            {/* Outer wave rings */}
+            <div className="absolute -top-2 left-[8px] right-[8px] flex flex-col items-center">
+              <div className="w-[18px] h-[18px] rounded-full border border-white border-dashed relative flex items-center justify-center">
+                <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -503,23 +482,7 @@ export default function QuotationLetterCreator() {
         {/* Scrollable list of quotes */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-3xs">
           <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100">
-            {isLoading ? (
-              <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
-                <RefreshCw className="w-5 h-5 animate-spin text-sky-600" />
-                <span>Memuat data dari cloud database...</span>
-              </div>
-            ) : dbError ? (
-              <div className="p-8 text-center text-xs text-red-500 bg-red-50/50 m-3 rounded-xl border border-red-100 flex flex-col items-center justify-center gap-2">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <span className="font-bold">Gagal Terhubung</span>
-                <span className="text-[10px] text-slate-500 leading-normal">
-                  Sistem gagal mengakses database cloud Firestore. Pastikan Firestore rules diperbaiki atau koneksi internet stabil.
-                </span>
-                <span className="text-[8px] font-mono text-red-600 border border-red-100 p-1 rounded bg-white max-w-full overflow-hidden truncate">
-                  {dbError}
-                </span>
-              </div>
-            ) : filteredQuotations.length === 0 ? (
+            {filteredQuotations.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 italic">
                 {searchQuery ? 'Tidak ada hasil pencarian.' : 'Belum ada formulir surat penawaran.'}
               </div>
@@ -554,7 +517,7 @@ export default function QuotationLetterCreator() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeleteTargetId(q.id);
+                          handleDelete(q.id);
                         }}
                         className="text-slate-300 hover:text-red-500 p-1 rounded-sm transition-colors cursor-pointer shrink-0"
                         title="Hapus surat"
@@ -1131,6 +1094,11 @@ export default function QuotationLetterCreator() {
                             </div>
                           </div>
 
+                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
+                          <div className="print:hidden mt-14 relative overflow-visible -mx-[18mm]">
+                            {renderFooterStripping()}
+                          </div>
+
                         </div>
                       </td>
                     </tr>
@@ -1146,11 +1114,6 @@ export default function QuotationLetterCreator() {
                   </tfoot>
                 </table>
 
-                {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (Locked to the bottom of the A4 paper card) */}
-                <div className="print:hidden absolute bottom-0 left-0 right-0 z-20">
-                  {renderFooterStripping()}
-                </div>
-
               </div>
 
             </div>
@@ -1163,82 +1126,6 @@ export default function QuotationLetterCreator() {
         )}
 
       </div>
-
-      {/* 4. MODAL POPUPS FOR COMPATIBLE IFRAME SAFE DIALOGS */}
-      {deleteTargetId && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
-          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-800 mb-2">Hapus Surat Penawaran?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Apakah Anda yakin ingin menghapus surat penawaran ini secara permanen dari penyimpanan Firestore Cloud? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => setDeleteTargetId(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const id = deleteTargetId;
-                  setDeleteTargetId(null);
-                  await handleDelete(id);
-                }}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors cursor-pointer"
-              >
-                Hapus Permanen
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
-          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-4">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-slate-800 mb-2">Muat Contoh Instan?</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Apakah Anda yakin ingin mengatur ulang isi surat ini dengan preset contoh instan? Seluruh artikel & rincian saat ini akan digantikan sepenuhnya.
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowResetConfirm(false);
-                  if (selectedQuote) {
-                    const resetQuote: Quotation = {
-                      ...dummyQuotationPreset,
-                      id: selectedQuote.id // Keep current ID
-                    };
-                    setSelectedQuote(resetQuote);
-                    const updated = quotations.map(q => q.id === selectedQuote.id ? resetQuote : q);
-                    persistList(updated);
-                  }
-                }}
-                className="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors cursor-pointer"
-              >
-                Muat Ulang
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

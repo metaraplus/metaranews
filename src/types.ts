@@ -66,7 +66,6 @@ export interface Quotation {
   vatPercent: number;
   showVat: boolean;
   createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface SpjItem {
@@ -90,9 +89,4 @@ export interface Spj {
   signerName: string;
   signerTitle: string;
   createdAt?: string;
-  updatedAt?: string;
-  paymentDate?: string;
-  danaMasuk?: number;
-  feeInsentif?: number;
-  isPaid?: boolean;
 }
