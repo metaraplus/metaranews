@@ -16,12 +16,13 @@ import {
 
 // Credentials derived from firebase-applet-config.json
 const firebaseConfig = {
-  apiKey: "AIzaSyCkJMYYcFY0J4fyc7txj_CNvM8VnIO0Dqo",
-  authDomain: "metaranews-1377d.firebaseapp.com",
-  projectId: "metaranews-1377d",
-  storageBucket: "metaranews-1377d.firebasestorage.app",
-  messagingSenderId: "706461689572",
-  appId: "1:706461689572:web:c61ac49246995347f16ef1"
+  apiKey: "AIzaSyA4tMLUwUTcFwWZuyImTgj7HDPdvaWy4LU",
+  authDomain: "metaranews-fe15d.firebaseapp.com",
+  projectId: "metaranews-fe15d",
+  storageBucket: "metaranews-fe15d.firebasestorage.app",
+  messagingSenderId: "186582031482",
+  appId: "1:186582031482:web:93633009dc46bef3832fc3",
+  measurementId: "G-8FMZW93RL8"
 };
 
 // Initialize Firebase
