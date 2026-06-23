@@ -79,6 +79,8 @@ export default function SpjCreator() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Ref to hold the auto-save debounce timer
   const saveTimeoutRef = useRef<any>(null);
@@ -111,7 +113,7 @@ export default function SpjCreator() {
       return localList[0] || null;
     });
 
-    // 2. Setup real-time listener for "spjs" collection
+    // Setup real-time listener for "spjs" collection
     const unsubscribe = onSnapshot(collection(db, 'spjs'), (snap) => {
       const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
       
@@ -122,7 +124,9 @@ export default function SpjCreator() {
         localStorage.setItem('metara_spjs', JSON.stringify(remoteList));
         
         setSelectedSpj(current => {
-          if (!current) return remoteList[0];
+          if (!current || (!stored && current.id === 'spj-preset-1')) {
+            return remoteList[0] || null;
+          }
           const matched = remoteList.find(item => item.id === current.id);
           return matched || remoteList[0];
         });
@@ -187,8 +191,6 @@ export default function SpjCreator() {
 
   // Delete SPJ
   const handleDeleteSpj = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus dokumen SPJ ini secara permanen?')) return;
-    
     try {
       const updated = spjs.filter(s => s.id !== id);
       persistList(updated);
@@ -238,16 +240,7 @@ export default function SpjCreator() {
 
   // Reset to original preset sample
   const handleLoadSamplePreset = () => {
-    if (!selectedSpj) return;
-    if (window.confirm('Muat ulang isi dokumen SPJ ini dengan preset contoh instan? Rincian saat ini akan diganti.')) {
-      const resetSpj: Spj = {
-        ...dummySpjPreset,
-        id: selectedSpj.id
-      };
-      setSelectedSpj(resetSpj);
-      const updated = spjs.map(s => s.id === selectedSpj.id ? resetSpj : s);
-      persistList(updated);
-    }
+    setShowResetConfirm(true);
   };
 
   // Handle updates to selectedSpj fields
@@ -497,7 +490,7 @@ export default function SpjCreator() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteSpj(s.id);
+                      setDeleteTargetId(s.id);
                     }}
                     className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     title="Hapus Dokumen"
@@ -1075,6 +1068,83 @@ export default function SpjCreator() {
         </div>
 
       </div>
+
+      {/* 4. MODAL POPUPS FOR COMPATIBLE IFRAME SAFE DIALOGS */}
+      {deleteTargetId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
+          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-2">Hapus Dokumen SPJ?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              Apakah Anda yakin ingin menghapus dokumen SPJ ini secara permanen dari penyimpanan Firestore Cloud? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetId(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = deleteTargetId;
+                  setDeleteTargetId(null);
+                  await handleDeleteSpj(id);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                Hapus Permanen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
+          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 rotate-45" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-2">Reset Contoh SPJ?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              Apakah Anda yakin ingin mengatur ulang dokumen SPJ ini dengan preset contoh asli? Seluruh rincian data saat ini akan digantikan sepenuhnya.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  if (selectedSpj) {
+                    const resetSpj: Spj = {
+                      ...dummySpjPreset,
+                      id: selectedSpj.id
+                    };
+                    setSelectedSpj(resetSpj);
+                    const updated = spjs.map(s => s.id === selectedSpj.id ? resetSpj : s);
+                    persistList(updated);
+                  }
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                Muat Ulang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

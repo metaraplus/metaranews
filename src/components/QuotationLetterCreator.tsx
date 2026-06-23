@@ -13,7 +13,8 @@ import {
   Coins, 
   AlertCircle, 
   Check, 
-  RefreshCw 
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { Quotation, QuotationItem } from '../types';
 import { db, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from '../firebase';
@@ -55,6 +56,8 @@ export default function QuotationLetterCreator() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Ref to hold the auto-save debounce timer
   const saveTimeoutRef = useRef<any>(null);
@@ -128,7 +131,7 @@ export default function QuotationLetterCreator() {
       return localList[0] || null;
     });
 
-    // 2. Setup real-time listener for "quotations" collection
+    // Setup real-time listener for "quotations" collection
     const unsubscribe = onSnapshot(collection(db, 'quotations'), (snap) => {
       const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
       
@@ -140,7 +143,9 @@ export default function QuotationLetterCreator() {
         
         // Auto-select or preserve currently selected item
         setSelectedQuote(current => {
-          if (!current) return remoteList[0];
+          if (!current || (!stored && current.id === 'q-sample-preset')) {
+            return remoteList[0] || null;
+          }
           const matched = remoteList.find(item => item.id === current.id);
           return matched || remoteList[0];
         });
@@ -211,8 +216,6 @@ export default function QuotationLetterCreator() {
 
   // Delete quotation
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus surat penawaran ini secara permanen?')) return;
-    
     try {
       const updated = quotations.filter(q => q.id !== id);
       persistList(updated);
@@ -264,16 +267,7 @@ export default function QuotationLetterCreator() {
 
   // Trigger quick sample reset
   const handleLoadSamplePreset = () => {
-    if (!selectedQuote) return;
-    if (window.confirm('Muat ulang isi surat ini dengan preset contoh instan? Artikel & rincian saat ini akan diganti.')) {
-      const resetQuote: Quotation = {
-        ...dummyQuotationPreset,
-        id: selectedQuote.id // Keep the current ID
-      };
-      setSelectedQuote(resetQuote);
-      const updated = quotations.map(q => q.id === selectedQuote.id ? resetQuote : q);
-      persistList(updated);
-    }
+    setShowResetConfirm(true);
   };
 
   // Handle nested updates for selectedQuote
@@ -529,7 +523,7 @@ export default function QuotationLetterCreator() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(q.id);
+                          setDeleteTargetId(q.id);
                         }}
                         className="text-slate-300 hover:text-red-500 p-1 rounded-sm transition-colors cursor-pointer shrink-0"
                         title="Hapus surat"
@@ -1138,6 +1132,82 @@ export default function QuotationLetterCreator() {
         )}
 
       </div>
+
+      {/* 4. MODAL POPUPS FOR COMPATIBLE IFRAME SAFE DIALOGS */}
+      {deleteTargetId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
+          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-2">Hapus Surat Penawaran?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              Apakah Anda yakin ingin menghapus surat penawaran ini secara permanen dari penyimpanan Firestore Cloud? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setDeleteTargetId(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = deleteTargetId;
+                  setDeleteTargetId(null);
+                  await handleDelete(id);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                Hapus Permanen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 no-print-element">
+          <div className="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-2">Muat Contoh Instan?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              Apakah Anda yakin ingin mengatur ulang isi surat ini dengan preset contoh instan? Seluruh artikel & rincian saat ini akan digantikan sepenuhnya.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-slate-150 rounded-lg transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  if (selectedQuote) {
+                    const resetQuote: Quotation = {
+                      ...dummyQuotationPreset,
+                      id: selectedQuote.id // Keep current ID
+                    };
+                    setSelectedQuote(resetQuote);
+                    const updated = quotations.map(q => q.id === selectedQuote.id ? resetQuote : q);
+                    persistList(updated);
+                  }
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                Muat Ulang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
