@@ -125,19 +125,30 @@ export default function SpjCreator() {
         const snap = await getDocs(collection(db, 'spjs'));
         const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
         
+        // Track locally deleted IDs to prevent resurrection
+        const deletedStr = localStorage.getItem('metara_deleted_spjs');
+        const deletedList: string[] = deletedStr ? JSON.parse(deletedStr) : [];
+
         // Merge strategy based on unique id
         const mergedMap = new Map<string, Spj>();
         
-        // Load remote docs
+        // Load remote docs (excluding any that are marked deleted)
         remoteList.forEach(s => {
           if (s && s.id) {
-            mergedMap.set(s.id, s);
+            if (deletedList.includes(s.id)) {
+              // Delete permanently from Cloud if resurrected or slow-delete
+              deleteDoc(doc(db, 'spjs', s.id)).catch(err => {
+                console.warn("Retrying Firestore delete for SPJ:", s.id, err);
+              });
+            } else {
+              mergedMap.set(s.id, s);
+            }
           }
         });
         
         // Override with local docs
         localList.forEach(s => {
-          if (s && s.id) {
+          if (s && s.id && !deletedList.includes(s.id)) {
             const remoteItem = mergedMap.get(s.id);
             if (remoteItem) {
               const localCreated = s.createdAt || '';
@@ -233,6 +244,14 @@ export default function SpjCreator() {
     if (!window.confirm('Apakah Anda yakin ingin menghapus dokumen SPJ ini secara permanen?')) return;
     
     try {
+      // Add to deleted tracking list
+      const deletedStr = localStorage.getItem('metara_deleted_spjs');
+      const deletedList: string[] = deletedStr ? JSON.parse(deletedStr) : [];
+      if (!deletedList.includes(id)) {
+        deletedList.push(id);
+        localStorage.setItem('metara_deleted_spjs', JSON.stringify(deletedList));
+      }
+
       const updated = spjs.filter(s => s.id !== id);
       persistList(updated);
       

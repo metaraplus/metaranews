@@ -21,7 +21,7 @@ const firebaseConfig = {
   projectId: "metaranews-fe15d",
   storageBucket: "metaranews-fe15d.firebasestorage.app",
   messagingSenderId: "186582031482",
-  appId: "1:186582031482:web:93633009dc46bef3832fc3",
+  appId: "1:186582031482:web:e5ffb821b10117bc832fc3",
   measurementId: "G-8FMZW93RL8"
 };
 

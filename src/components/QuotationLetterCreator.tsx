@@ -143,19 +143,30 @@ export default function QuotationLetterCreator() {
         const snap = await getDocs(collection(db, 'quotations'));
         const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
         
+        // Track locally deleted IDs to prevent them from being resurrected from remote Firestore
+        const deletedStr = localStorage.getItem('metara_deleted_quotations');
+        const deletedList: string[] = deletedStr ? JSON.parse(deletedStr) : [];
+
         // Merge strategy based on unique id
         const mergedMap = new Map<string, Quotation>();
         
-        // Load remote docs first
+        // Load remote docs first (excluding any that are marked deleted)
         remoteList.forEach(q => {
           if (q && q.id) {
-            mergedMap.set(q.id, q);
+            if (deletedList.includes(q.id)) {
+              // Delete permanently from Cloud if it was somehow resurrected or not deleted yet
+              deleteDoc(doc(db, 'quotations', q.id)).catch(err => {
+                console.warn("Retrying Firestore delete for:", q.id, err);
+              });
+            } else {
+              mergedMap.set(q.id, q);
+            }
           }
         });
         
-        // Override with local docs (local is usually the absolute source of truth for the active session, or we can merge newest first)
+        // Override with local docs
         localList.forEach(q => {
-          if (q && q.id) {
+          if (q && q.id && !deletedList.includes(q.id)) {
             const remoteItem = mergedMap.get(q.id);
             if (remoteItem) {
               // Both exist, let's keep the one with newer createdAt or just prefer the local one if isSaving was pending
@@ -259,6 +270,14 @@ export default function QuotationLetterCreator() {
     if (!window.confirm('Apakah Anda yakin ingin menghapus surat penawaran ini secara permanen?')) return;
     
     try {
+      // Add to deleted tracking list
+      const deletedStr = localStorage.getItem('metara_deleted_quotations');
+      const deletedList: string[] = deletedStr ? JSON.parse(deletedStr) : [];
+      if (!deletedList.includes(id)) {
+        deletedList.push(id);
+        localStorage.setItem('metara_deleted_quotations', JSON.stringify(deletedList));
+      }
+
       const updated = quotations.filter(q => q.id !== id);
       persistList(updated);
       
