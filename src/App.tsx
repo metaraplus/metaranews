@@ -20,6 +20,7 @@ import PersonnelPanel from './components/PersonnelPanel';
 import QuotationLetterCreator from './components/QuotationLetterCreator';
 import SpjCreator from './components/SpjCreator';
 import LetterAgendaBook from './components/LetterAgendaBook';
+import PaymentTracker from './components/PaymentTracker';
 import { db, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from './firebase';
 import { 
   LayoutDashboard, 
@@ -41,7 +42,8 @@ import {
   Edit3,
   X,
   Save,
-  BookOpen
+  BookOpen,
+  DollarSign
 } from 'lucide-react';
 
 export default function App() {
@@ -66,7 +68,7 @@ export default function App() {
 
   // --- Active Tab State ---
   const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
-  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda'>('laporan');
+  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda' | 'pembayaran'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
@@ -978,6 +980,19 @@ export default function App() {
                 <BookOpen className="w-4 h-4" />
                 Nomor Surat
               </button>
+
+              <button
+                onClick={() => setActiveTab('pembayaran')}
+                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === 'pembayaran'
+                    ? 'border-sky-600 text-sky-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                }`}
+                id="tab-pembayaran-btn"
+              >
+                <DollarSign className="w-4 h-4" />
+                Pembayaran
+              </button>
               
               {/* Only Admin and Manager can see Wartawan & Rubrics settings */}
               {currentUser.role !== 'Staff' && (
@@ -1299,6 +1314,23 @@ export default function App() {
               </div>
 
               <LetterAgendaBook onNavigateToTab={(tab) => setActiveTab(tab)} />
+            </div>
+          )}
+
+          {/* --- TAB CONTENT 8: PEMBAYARAN & INSENTIF MARKETING --- */}
+          {activeTab === 'pembayaran' && (
+            <div className="space-y-6 animate-in fade-in duration-200" id="pembayaran-tab-view">
+              <div>
+                <h3 className="font-bold text-slate-900 text-md flex items-center gap-2 no-print-element">
+                  <DollarSign className="w-5 h-5 text-sky-600" />
+                  Manajemen Pembayaran &amp; Insentif Marketing
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 no-print-element">
+                  Kelola status pelunasan seluruh SPJ/Invoice iklan yang telah diterbitkan, catat tanggal bayar, serta input fee/insentif yang dialokasikan kepada tim marketing.
+                </p>
+              </div>
+
+              <PaymentTracker onNavigateToTab={(tab) => setActiveTab(tab)} />
             </div>
           )}
 

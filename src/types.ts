@@ -89,4 +89,9 @@ export interface Spj {
   signerName: string;
   signerTitle: string;
   createdAt?: string;
+  paymentDate?: string;
+  paymentStatus?: 'Belum Lunas' | 'Lunas';
+  marketingFee?: number;
+  marketingName?: string;
+  paymentNotes?: string;
 }

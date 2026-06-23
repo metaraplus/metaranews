@@ -97,7 +97,12 @@
         "bankOwner": { "type": "string" },
         "signerName": { "type": "string" },
         "signerTitle": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "paymentDate": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "marketingFee": { "type": "number" },
+        "marketingName": { "type": "string" },
+        "paymentNotes": { "type": "string" }
       },
       "required": ["id", "invoiceNumber", "date", "recipientName"]
     }
