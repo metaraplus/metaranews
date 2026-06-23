@@ -11,7 +11,8 @@ import {
   getDocs, 
   setDoc, 
   deleteDoc, 
-  updateDoc 
+  updateDoc,
+  onSnapshot
 } from 'firebase/firestore';
 
 // Credentials derived from firebase-applet-config.json
@@ -32,4 +33,4 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 }, "ai-studio-69c184d0-5b30-47d2-b410-4a23184e9310");
 
-export { collection, doc, getDocs, setDoc, deleteDoc, updateDoc };
+export { collection, doc, getDocs, setDoc, deleteDoc, updateDoc, onSnapshot };

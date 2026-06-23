@@ -19,7 +19,7 @@ import {
   Youtube
 } from 'lucide-react';
 import { Spj, SpjItem } from '../types';
-import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
+import { db, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from '../firebase';
 
 // Helper to format date in Indonesian long style: "7 April 2026"
 const formatIndonesianDate = (dateStr: string): string => {
@@ -83,87 +83,77 @@ export default function SpjCreator() {
   // Custom interactive features
   const [showSignatureStamp, setShowSignatureStamp] = useState(true);
 
-  // Safe fetch from Firestore with initial local render and background merge sync
+  // Safe fetch from Firestore with initial local render and real-time subscription
   useEffect(() => {
-    async function loadSpjs() {
-      // 1. Instantly load from localStorage for speed
-      const stored = localStorage.getItem('metara_spjs');
-      let localList: Spj[] = [];
-      if (stored) {
-        try {
-          localList = JSON.parse(stored) as Spj[];
-        } catch (e) {
-          console.error("Failed parsing stored SPJs:", e);
-        }
-      }
-
-      // If local list is empty, start with dummy preset
-      if (localList.length === 0) {
-        localList = [{ ...dummySpjPreset, createdAt: new Date().toISOString() }];
-      }
-
-      // Pre-populate state immediately
-      setSpjs(localList);
-      setSelectedSpj(localList[0] || null);
-
-      // 2. Fetch from Firestore to sync and merge
+    // 1. Instantly load from localStorage for speed
+    const stored = localStorage.getItem('metara_spjs');
+    let localList: Spj[] = [];
+    if (stored) {
       try {
-        const snap = await getDocs(collection(db, 'spjs'));
-        const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
-        
-        // Merge strategy based on unique id
-        const mergedMap = new Map<string, Spj>();
-        
-        // Load remote docs
-        remoteList.forEach(s => {
-          if (s && s.id) {
+        localList = JSON.parse(stored) as Spj[];
+      } catch (e) {
+        console.error("Failed parsing stored SPJs:", e);
+      }
+    }
+
+    // If local list is empty, start with dummy preset
+    if (localList.length === 0) {
+      localList = [{ ...dummySpjPreset, createdAt: new Date().toISOString() }];
+    }
+
+    // Pre-populate state immediately
+    setSpjs(localList);
+    setSelectedSpj(prevSelected => {
+      if (prevSelected) return prevSelected;
+      return localList[0] || null;
+    });
+
+    // 2. Setup real-time listener for "spjs" collection
+    const unsubscribe = onSnapshot(collection(db, 'spjs'), (snap) => {
+      const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
+      
+      const mergedMap = new Map<string, Spj>();
+      
+      // Load remote docs
+      remoteList.forEach(s => {
+        if (s && s.id) {
+          mergedMap.set(s.id, s);
+        }
+      });
+      
+      // Include anything in localStorage that isn't in Firestore yet
+      localList.forEach(s => {
+        if (s && s.id) {
+          if (!mergedMap.has(s.id)) {
             mergedMap.set(s.id, s);
-          }
-        });
-        
-        // Override with local docs
-        localList.forEach(s => {
-          if (s && s.id) {
-            const remoteItem = mergedMap.get(s.id);
-            if (remoteItem) {
-              // Merge based on updatedAt or createdAt.
-              // If remote is newer or identical, remote wins to prevent stale cache override.
-              const localTime = s.updatedAt || s.createdAt || '';
-              const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
-              if (remoteTime >= localTime) {
-                mergedMap.set(s.id, remoteItem);
-              } else {
-                mergedMap.set(s.id, s);
-              }
-            } else {
+          } else {
+            const remoteItem = mergedMap.get(s.id)!;
+            const localTime = s.updatedAt || s.createdAt || '';
+            const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
+            if (localTime > remoteTime) {
               mergedMap.set(s.id, s);
             }
           }
-        });
-
-        const mergedList = Array.from(mergedMap.values());
-        if (mergedList.length > 0) {
-          mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-          setSpjs(mergedList);
-          
-          if (localList[0]) {
-            const currentSelected = mergedList.find(s => s.id === localList[0].id);
-            if (currentSelected) {
-              setSelectedSpj(currentSelected);
-            } else {
-              setSelectedSpj(mergedList[0]);
-            }
-          } else {
-            setSelectedSpj(mergedList[0]);
-          }
-
-          localStorage.setItem('metara_spjs', JSON.stringify(mergedList));
         }
-      } catch (err) {
-        console.warn("Using offline mode for SPJs:", err);
+      });
+
+      const mergedList = Array.from(mergedMap.values());
+      if (mergedList.length > 0) {
+        mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+        setSpjs(mergedList);
+        localStorage.setItem('metara_spjs', JSON.stringify(mergedList));
+        
+        setSelectedSpj(current => {
+          if (!current) return mergedList[0];
+          const matched = mergedList.find(item => item.id === current.id);
+          return matched || mergedList[0];
+        });
       }
-    }
-    loadSpjs();
+    }, (err) => {
+      console.warn("Real-time listener on spjs failed, using offline cache:", err);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Save to local storage whenever list modifications happen
@@ -173,7 +163,7 @@ export default function SpjCreator() {
   };
 
   // Create a brand new empty SPJ (Invoice)
-  const handleCreateNew = () => {
+  const handleCreateNew = async () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newId = `spj-${Date.now()}`;
     const newSpj: Spj = {
@@ -202,6 +192,13 @@ export default function SpjCreator() {
     const updated = [newSpj, ...spjs];
     persistList(updated);
     setSelectedSpj(newSpj);
+
+    // Save immediately to Firestore
+    try {
+      await setDoc(doc(db, 'spjs', newId), newSpj);
+    } catch (err) {
+      console.error("Gagal menyimpan SPJ baru ke Firestore secara otomatis:", err);
+    }
   };
 
   // Delete SPJ

@@ -14,7 +14,7 @@ import {
   Clock,
   ArrowRight
 } from 'lucide-react';
-import { db, collection, getDocs, doc, updateDoc } from '../firebase';
+import { db, collection, getDocs, doc, updateDoc, onSnapshot } from '../firebase';
 import { Spj } from '../types';
 
 // Helper to format date in Indonesian style like "05 Jun 2026"
@@ -60,29 +60,32 @@ export default function InvoicePaymentTracker() {
   const [editDanaMasuk, setEditDanaMasuk] = useState<number>(0);
   const [editFeeInsentif, setEditFeeInsentif] = useState<number>(0);
 
-  // Fetch standard receipts data
-  const fetchSpjsForPayments = async (silent = false) => {
-    if (!silent) setLoading(true);
+  // Fetch standard receipts data in real-time
+  useEffect(() => {
+    setLoading(true);
     setErrorMsg('');
-    try {
-      const snap = await getDocs(collection(db, 'spjs'));
-      const listData = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+
+    const querySpjs = collection(db, 'spjs');
+    const unsubscribe = onSnapshot(querySpjs, (snapshot) => {
+      const listData = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
       } as Spj));
       setRawSpjs(listData);
-    } catch (err: any) {
+      setLoading(false);
+    }, (err) => {
       console.error("Error loading SPJ Payments:", err);
       setErrorMsg("Gagal sinkron database dana masuk.");
-    } finally {
       setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
+    });
 
-  useEffect(() => {
-    fetchSpjsForPayments();
+    return () => unsubscribe();
   }, []);
+
+  const fetchSpjsForPayments = async (silent = false) => {
+    // Legacy support, now snapshot listener is real-time
+    setIsRefreshing(false);
+  };
 
   // Compute calculated values per SPJ item
   const invoicesWithValues = rawSpjs.map((spj) => {

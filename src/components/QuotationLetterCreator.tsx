@@ -16,7 +16,7 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import { Quotation, QuotationItem } from '../types';
-import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
+import { db, collection, getDocs, setDoc, doc, deleteDoc, onSnapshot } from '../firebase';
 
 // Helper to format date in Indonesian long style: "21 Juni 2026"
 const formatIndonesianDate = (dateStr: string): string => {
@@ -103,86 +103,77 @@ export default function QuotationLetterCreator() {
 
   // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
-    async function loadQuotations() {
-      // 1. Instantly load from localStorage so the UI is immediately populated and responsive
-      const stored = localStorage.getItem('metara_quotations');
-      let localList: Quotation[] = [];
-      if (stored) {
-        try {
-          localList = JSON.parse(stored) as Quotation[];
-        } catch (e) {
-          console.error("Failed parsing stored quotations:", e);
-        }
-      }
-
-      // If local list is empty, start with dummy preset
-      if (localList.length === 0) {
-        localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
-      }
-
-      // Pre-populate state immediately
-      setQuotations(localList);
-      setSelectedQuote(localList[0] || null);
-
-      // 2. Fetch from Firestore to sync and merge any remote documents
+    // 1. Instantly load from localStorage so the UI is immediately populated and responsive
+    const stored = localStorage.getItem('metara_quotations');
+    let localList: Quotation[] = [];
+    if (stored) {
       try {
-        const snap = await getDocs(collection(db, 'quotations'));
-        const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
-        
-        // Merge strategy based on unique id
-        const mergedMap = new Map<string, Quotation>();
-        
-        // Load remote docs first
-        remoteList.forEach(q => {
-          if (q && q.id) {
+        localList = JSON.parse(stored) as Quotation[];
+      } catch (e) {
+        console.error("Failed parsing stored quotations:", e);
+      }
+    }
+
+    if (localList.length === 0) {
+      localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
+    }
+
+    // Pre-populate state immediately
+    setQuotations(localList);
+    setSelectedQuote(prevSelected => {
+      if (prevSelected) return prevSelected;
+      return localList[0] || null;
+    });
+
+    // 2. Setup real-time listener for "quotations" collection
+    const unsubscribe = onSnapshot(collection(db, 'quotations'), (snap) => {
+      const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
+      
+      const mergedMap = new Map<string, Quotation>();
+      
+      // Load remote docs first (always master truth)
+      remoteList.forEach(q => {
+        if (q && q.id) {
+          mergedMap.set(q.id, q);
+        }
+      });
+
+      // Include anything in localStorage that isn't in Firestore yet (e.g. offline drafts)
+      localList.forEach(q => {
+        if (q && q.id) {
+          if (!mergedMap.has(q.id)) {
+            // Document only exists locally, keep it as local draft
             mergedMap.set(q.id, q);
-          }
-        });
-        
-        // Override with local docs (local is usually the absolute source of truth for the active session, or we can merge newest first)
-        localList.forEach(q => {
-          if (q && q.id) {
-            const remoteItem = mergedMap.get(q.id);
-            if (remoteItem) {
-              // Both exist, let's keep the one with newer updatedAt or createdAt. 
-              // If remote is newer or identical, remote wins to prevent stale cache override.
-              const localTime = q.updatedAt || q.createdAt || '';
-              const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
-              if (remoteTime >= localTime) {
-                mergedMap.set(q.id, remoteItem);
-              } else {
-                mergedMap.set(q.id, q);
-              }
-            } else {
+          } else {
+            // Both exist, keep the newer one based on updatedAt/createdAt
+            const remoteItem = mergedMap.get(q.id)!;
+            const localTime = q.updatedAt || q.createdAt || '';
+            const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
+            if (localTime > remoteTime) {
               mergedMap.set(q.id, q);
             }
           }
-        });
-
-        const mergedList = Array.from(mergedMap.values());
-        if (mergedList.length > 0) {
-          mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-          setQuotations(mergedList);
-          
-          // Try to retain the current selection if it still exists
-          if (localList[0]) {
-            const currentSelected = mergedList.find(q => q.id === localList[0].id);
-            if (currentSelected) {
-              setSelectedQuote(currentSelected);
-            } else {
-              setSelectedQuote(mergedList[0]);
-            }
-          } else {
-            setSelectedQuote(mergedList[0]);
-          }
-
-          localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
         }
-      } catch (err) {
-        console.warn("Using offline mode as Firestore is unreachable during startup:", err);
+      });
+
+      const mergedList = Array.from(mergedMap.values());
+      if (mergedList.length > 0) {
+        mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+        setQuotations(mergedList);
+        localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
+        
+        // Auto-select or preserve currently selected item
+        setSelectedQuote(current => {
+          if (!current) return mergedList[0];
+          const matched = mergedList.find(item => item.id === current.id);
+          return matched || mergedList[0];
+        });
       }
-    }
-    loadQuotations();
+    }, (err) => {
+      console.warn("Real-time listener on quotations failed, using offline cache:", err);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Save to local storage whenever list modifications happen
@@ -192,7 +183,7 @@ export default function QuotationLetterCreator() {
   };
 
   // Create a brand new empty quotation letter
-  const handleCreateNew = () => {
+  const handleCreateNew = async () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newId = `q-${Date.now()}`;
     const newLetter: Quotation = {
@@ -213,7 +204,7 @@ export default function QuotationLetterCreator() {
           description: 'Meliput kegiatan lapangan dan publikasi artikel berita',
           quantity: 1,
           unit: 'Paket',
-          price: 1500004
+          price: 1500000
         }
       ],
       bodyClosing: 'Demikian penawaran ini kami ajukan. Atas perhatian dan kerjasamanya kami haturkan terima kasih.',
@@ -227,6 +218,13 @@ export default function QuotationLetterCreator() {
     const updated = [newLetter, ...quotations];
     persistList(updated);
     setSelectedQuote(newLetter);
+
+    // Save immediately to Firestore
+    try {
+      await setDoc(doc(db, 'quotations', newId), newLetter);
+    } catch (err) {
+      console.error("Gagal menyimpan surat baru ke Firestore secara otomatis:", err);
+    }
   };
 
   // Delete quotation

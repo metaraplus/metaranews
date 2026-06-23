@@ -11,7 +11,7 @@ import {
   Building,
   Tag
 } from 'lucide-react';
-import { db, collection, getDocs } from '../firebase';
+import { db, collection, getDocs, onSnapshot } from '../firebase';
 import { Spj, Quotation } from '../types';
 
 interface AgendaRow {
@@ -57,40 +57,47 @@ export default function LetterAgendaBook() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'Invoice' | 'Penawaran'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch from Firestore
-  const fetchData = async (silent = false) => {
-    if (!silent) setLoading(true);
-    setErrorMsg('');
-    try {
-      const [spjSnap, quoteSnap] = await Promise.all([
-        getDocs(collection(db, 'spjs')),
-        getDocs(collection(db, 'quotations'))
-      ]);
-
-      const spjsData = spjSnap.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as Spj));
-
-      const quotationsData = quoteSnap.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as Quotation));
-
-      setRawSpjs(spjsData);
-      setRawQuotations(quotationsData);
-    } catch (err: any) {
-      console.error('Error loading letters agenda:', err);
-      setErrorMsg('Gagal memuat data dari database cloud. Silakan coba lagi.');
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
+  // Fetch from Firestore in real-time
   useEffect(() => {
-    fetchData();
+    setLoading(true);
+    setErrorMsg('');
+
+    const queryQuotes = collection(db, 'quotations');
+    const unsubscribeQuotes = onSnapshot(queryQuotes, (snapshot) => {
+      const data = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Quotation));
+      setRawQuotations(data);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error in real-time quotations listener:", err);
+      setErrorMsg("Koneksi gagal saat menyinkronkan data.");
+    });
+
+    const querySpjs = collection(db, 'spjs');
+    const unsubscribeSpjs = onSnapshot(querySpjs, (snapshot) => {
+      const data = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Spj));
+      setRawSpjs(data);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error in real-time SPJs listener:", err);
+      setErrorMsg("Koneksi gagal saat menyinkronkan data.");
+    });
+
+    return () => {
+      unsubscribeQuotes();
+      unsubscribeSpjs();
+    };
   }, []);
+
+  const fetchData = async (silent = false) => {
+    // legacy function, snapshot handles real-time sync automatically
+    setIsRefreshing(false);
+  };
 
   // Sync / compile agenda rows whenever raw data updates
   useEffect(() => {
