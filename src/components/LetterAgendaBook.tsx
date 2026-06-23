@@ -48,8 +48,28 @@ const formatIndonesianDate = (dateStr: string): string => {
 export default function LetterAgendaBook() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [rawSpjs, setRawSpjs] = useState<Spj[]>([]);
-  const [rawQuotations, setRawQuotations] = useState<Quotation[]>([]);
+  const [rawSpjs, setRawSpjs] = useState<Spj[]>(() => {
+    const cached = localStorage.getItem('metara_spjs');
+    if (cached) {
+      try {
+        return JSON.parse(cached) as Spj[];
+      } catch (e) {
+        console.error("Gagal mengurai cache SPJ di Buku Agenda:", e);
+      }
+    }
+    return [];
+  });
+  const [rawQuotations, setRawQuotations] = useState<Quotation[]>(() => {
+    const cached = localStorage.getItem('metara_quotations');
+    if (cached) {
+      try {
+        return JSON.parse(cached) as Quotation[];
+      } catch (e) {
+        console.error("Gagal mengurai cache Quotation di Buku Agenda:", e);
+      }
+    }
+    return [];
+  });
   const [agendaRows, setAgendaRows] = useState<AgendaRow[]>([]);
   
   // Filters & State
@@ -62,6 +82,17 @@ export default function LetterAgendaBook() {
     setLoading(true);
     setErrorMsg('');
 
+    // Load fresh cache instantly
+    const cachedSpjs = localStorage.getItem('metara_spjs');
+    const cachedQuotes = localStorage.getItem('metara_quotations');
+    if (cachedSpjs) {
+      try { setRawSpjs(JSON.parse(cachedSpjs)); } catch (e) { console.error(e); }
+    }
+    if (cachedQuotes) {
+      try { setRawQuotations(JSON.parse(cachedQuotes)); } catch (e) { console.error(e); }
+    }
+    setLoading(false);
+
     const queryQuotes = collection(db, 'quotations');
     const unsubscribeQuotes = onSnapshot(queryQuotes, (snapshot) => {
       const data = snapshot.docs.map(docSnap => ({
@@ -69,10 +100,14 @@ export default function LetterAgendaBook() {
         ...docSnap.data()
       } as Quotation));
       setRawQuotations(data);
+      try {
+        localStorage.setItem('metara_quotations', JSON.stringify(data));
+      } catch (e) {
+        console.error(e);
+      }
       setLoading(false);
     }, (err) => {
       console.error("Error in real-time quotations listener:", err);
-      setErrorMsg("Koneksi gagal saat menyinkronkan data.");
     });
 
     const querySpjs = collection(db, 'spjs');
@@ -82,10 +117,14 @@ export default function LetterAgendaBook() {
         ...docSnap.data()
       } as Spj));
       setRawSpjs(data);
+      try {
+        localStorage.setItem('metara_spjs', JSON.stringify(data));
+      } catch (e) {
+        console.error(e);
+      }
       setLoading(false);
     }, (err) => {
       console.error("Error in real-time SPJs listener:", err);
-      setErrorMsg("Koneksi gagal saat menyinkronkan data.");
     });
 
     return () => {
@@ -95,8 +134,34 @@ export default function LetterAgendaBook() {
   }, []);
 
   const fetchData = async (silent = false) => {
-    // legacy function, snapshot handles real-time sync automatically
-    setIsRefreshing(false);
+    setIsRefreshing(true);
+    setErrorMsg('');
+    try {
+      // Direct high-priority fetch to pull the absolute newest records from Cloud Database
+      console.log("Memulai sinkronisasi manual nomor surat...");
+      const [qSnap, sSnap] = await Promise.all([
+        getDocs(collection(db, 'quotations')),
+        getDocs(collection(db, 'spjs'))
+      ]);
+
+      const qData = qSnap.docs.map(d => ({ id: d.id, ...d.data() } as Quotation));
+      const sData = sSnap.docs.map(d => ({ id: d.id, ...d.data() } as Spj));
+
+      if (qData.length > 0) {
+        setRawQuotations(qData);
+        localStorage.setItem('metara_quotations', JSON.stringify(qData));
+      }
+      if (sData.length > 0) {
+        setRawSpjs(sData);
+        localStorage.setItem('metara_spjs', JSON.stringify(sData));
+      }
+      console.log("Sinkronisasi manual nomor surat berhasil!");
+    } catch (err: any) {
+      console.error("Gagal melakukan sinkronisasi manual nomor surat:", err);
+      setErrorMsg("Koneksi gagal atau lambat saat sinkron data. Menggunakan data lokal.");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Sync / compile agenda rows whenever raw data updates

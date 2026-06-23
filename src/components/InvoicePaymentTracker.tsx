@@ -46,7 +46,17 @@ export default function InvoicePaymentTracker() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
-  const [rawSpjs, setRawSpjs] = useState<Spj[]>([]);
+  const [rawSpjs, setRawSpjs] = useState<Spj[]>(() => {
+    const cached = localStorage.getItem('metara_spjs');
+    if (cached) {
+      try {
+        return JSON.parse(cached) as Spj[];
+      } catch (e) {
+        console.error("Gagal mengurai cache SPJ di Tracker Pembayaran:", e);
+      }
+    }
+    return [];
+  });
   
   // Filtering & searching states
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +75,17 @@ export default function InvoicePaymentTracker() {
     setLoading(true);
     setErrorMsg('');
 
+    // Preload from cached local storage instantly to prevent empty UI
+    const cachedSpjs = localStorage.getItem('metara_spjs');
+    if (cachedSpjs) {
+      try {
+        setRawSpjs(JSON.parse(cachedSpjs));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setLoading(false);
+
     const querySpjs = collection(db, 'spjs');
     const unsubscribe = onSnapshot(querySpjs, (snapshot) => {
       const listData = snapshot.docs.map(docSnap => ({
@@ -72,10 +93,14 @@ export default function InvoicePaymentTracker() {
         ...docSnap.data()
       } as Spj));
       setRawSpjs(listData);
+      try {
+        localStorage.setItem('metara_spjs', JSON.stringify(listData));
+      } catch (e) {
+        console.error(e);
+      }
       setLoading(false);
     }, (err) => {
       console.error("Error loading SPJ Payments:", err);
-      setErrorMsg("Gagal sinkron database dana masuk.");
       setLoading(false);
     });
 
@@ -83,8 +108,27 @@ export default function InvoicePaymentTracker() {
   }, []);
 
   const fetchSpjsForPayments = async (silent = false) => {
-    // Legacy support, now snapshot listener is real-time
-    setIsRefreshing(false);
+    setIsRefreshing(true);
+    setErrorMsg('');
+    try {
+      console.log("Memulai sinkronisasi manual pembayaran...");
+      const snapshot = await getDocs(collection(db, 'spjs'));
+      const listData = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Spj));
+      
+      if (listData.length > 0) {
+        setRawSpjs(listData);
+        localStorage.setItem('metara_spjs', JSON.stringify(listData));
+      }
+      console.log("Sinkronisasi manual pembayaran berhasil!");
+    } catch (err: any) {
+      console.error("Kesalahan sinkronisasi manual pembayaran:", err);
+      setErrorMsg("Koneksi gagal saat menyinkronkan data pembayaran. Menggunakan cache.");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Compute calculated values per SPJ item
