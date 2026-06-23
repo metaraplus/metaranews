@@ -109,12 +109,34 @@ export default function QuotationLetterCreator() {
     showVat: true
   };
 
-  // Setup cloud real-time listener on mount
+  // Setup cloud real-time listener on mount with instant offline cache fallback
   useEffect(() => {
     setIsLoading(true);
     setDbError(null);
 
-    // Setup real-time listener for "quotations" collection
+    // 1. Instantly pull and load from Local Storage cache for super-fast load
+    const stored = localStorage.getItem('metara_quotations');
+    let localList: Quotation[] = [];
+    if (stored) {
+      try {
+        localList = JSON.parse(stored) as Quotation[];
+      } catch (e) {
+        console.error("Gagal mengurai cache quotations:", e);
+      }
+    }
+
+    if (localList.length === 0) {
+      localList = [{ ...dummyQuotationPreset, id: 'q-sample-preset', createdAt: new Date().toISOString() }];
+    }
+
+    setQuotations(localList);
+    setSelectedQuote(prevSelected => {
+      if (prevSelected) return prevSelected;
+      return localList[0] || null;
+    });
+    setIsLoading(false);
+
+    // 2. Setup real-time background listener for "quotations" collection
     const unsubscribe = onSnapshot(collection(db, 'quotations'), (snap) => {
       const remoteList = snap.docs.map(docSnap => docSnap.data() as Quotation);
       
@@ -122,6 +144,12 @@ export default function QuotationLetterCreator() {
         // Master truth comes directly from Cloud DB
         remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
         setQuotations(remoteList);
+        
+        try {
+          localStorage.setItem('metara_quotations', JSON.stringify(remoteList));
+        } catch (e) {
+          console.error("Gagal memperbarui cache quotations:", e);
+        }
         
         // Auto-select or preserve currently selected item
         setSelectedQuote(current => {
@@ -131,32 +159,29 @@ export default function QuotationLetterCreator() {
           const matched = remoteList.find(item => item.id === current.id);
           return matched || remoteList[0];
         });
-        setIsLoading(false);
       } else {
         // If Firestore is completely empty, register the initial default dummy preset
-        const defaultSample = { ...dummyQuotationPreset, createdAt: new Date().toISOString() };
+        const defaultSample = { ...dummyQuotationPreset, id: 'q-sample-preset', createdAt: new Date().toISOString() };
         setDoc(doc(db, 'quotations', defaultSample.id), defaultSample)
-          .then(() => {
-            setIsLoading(false);
-          })
           .catch(err => {
             console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
-            setDbError(err.message || String(err));
-            setIsLoading(false);
           });
       }
     }, (err) => {
-      console.error("Real-time listener on quotations failed:", err);
-      setDbError(err.message || String(err));
-      setIsLoading(false);
+      console.warn("Koneksi real-time quotations terhalang, beralih penuh ke cache browser aman:", err);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Save changes to local state in-memory (no local storage triggers)
+  // Save changes to local state & local storage for maximum resilience
   const persistList = (updated: Quotation[]) => {
     setQuotations(updated);
+    try {
+      localStorage.setItem('metara_quotations', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Gagal menyimpan ke localStorage:", e);
+    }
   };
 
   // Create a brand new empty quotation letter

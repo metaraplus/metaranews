@@ -45,17 +45,67 @@ import {
   BookOpen,
   Coins,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  CloudOff
 } from 'lucide-react';
 
 export default function App() {
-  // --- Firebase Loading State & Synchronized States ---
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [journalists, setJournalists] = useState<Journalist[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [personnels, setPersonnels] = useState<Personnel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // --- Local Storage Cached State Initializers for Instant Offline Rendering ---
+  const [articles, setArticles] = useState<Article[]>(() => {
+    const cached = localStorage.getItem('metaranews_articles');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error("Gagal parse cache artikel:", e);
+      }
+    }
+    return INITIAL_ARTICLES;
+  });
+
+  const [journalists, setJournalists] = useState<Journalist[]>(() => {
+    const cached = localStorage.getItem('metaranews_journalists');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error("Gagal parse cache jurnalis:", e);
+      }
+    }
+    return INITIAL_JOURNALISTS;
+  });
+
+  const [categories, setCategories] = useState<Category[]>(() => {
+    const cached = localStorage.getItem('metaranews_categories');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error("Gagal parse cache kategori:", e);
+      }
+    }
+    return INITIAL_CATEGORIES;
+  });
+
+  const [personnels, setPersonnels] = useState<Personnel[]>(() => {
+    const cached = localStorage.getItem('metaranews_personnels');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error("Gagal parse cache personil:", e);
+      }
+    }
+    return [
+      { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+      { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+      { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+    ];
+  });
+
+  const [isLoading, setIsLoading] = useState(false); // Instantly ready!
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<'connecting' | 'synced' | 'offline'>('connecting');
 
   // --- Login / Profile Session State ---
   const [currentUser, setCurrentUser] = useState<Personnel | null>(() => {
@@ -84,25 +134,51 @@ export default function App() {
   const [profileSuccess, setProfileSuccess] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Fetch all collections from Firestore on mount
+  // --- PERSISTENCE & CLOUD SYNCING PROCESS ---
+
+  // Automatically survive local state changes to Local Storage on every update
+  useEffect(() => {
+    if (articles && articles.length > 0) {
+      localStorage.setItem('metaranews_articles', JSON.stringify(articles));
+    }
+  }, [articles]);
+
+  useEffect(() => {
+    if (journalists && journalists.length > 0) {
+      localStorage.setItem('metaranews_journalists', JSON.stringify(journalists));
+    }
+  }, [journalists]);
+
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      localStorage.setItem('metaranews_categories', JSON.stringify(categories));
+    }
+  }, [categories]);
+
+  useEffect(() => {
+    if (personnels && personnels.length > 0) {
+      localStorage.setItem('metaranews_personnels', JSON.stringify(personnels));
+    }
+  }, [personnels]);
+
+  // Attempt to sync client cache with Cloud Firestore in the background on mount
   useEffect(() => {
     let active = true;
+    setDbStatus('connecting');
 
-    // Timeout of 8 seconds to prevent hanging on slow/blocked connections
+    // 4.5 second timeout threshold before considering connection "offline"
     const timeoutId = setTimeout(() => {
-      if (active) {
-        console.warn("Koneksi Firebase lambat atau gagal merespon. Menampilkan halaman penanganan koneksi.");
-        setConnectionError("Waktu tunggu koneksi database habis (Timeout 8 detik). Pastikan koneksi internet Anda stabil.");
-        setIsLoading(false);
+      if (active && dbStatus === 'connecting') {
+        console.warn("Koneksi cloud sangat lambat atau terhambat. Lanjut menggunakan cache lokal.");
+        setDbStatus('offline');
       }
-    }, 8000);
-    
-    async function loadData() {
+    }, 4500);
+
+    async function syncData() {
       try {
-        setIsLoading(true);
-        setConnectionError(null);
+        console.log("Menghubungkan ke Cloud Firestore...");
         
-        // Fetch collections in parallel to prevent network waterfall delays
+        // Fetch collections in parallel to prevent waterfalls
         const [jSnap, cSnap, aSnap, pSnap] = await Promise.all([
           getDocs(collection(db, 'journalists')),
           getDocs(collection(db, 'categories')),
@@ -117,7 +193,7 @@ export default function App() {
           let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
           let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
 
-          // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
+          // Seed default collections if empty in Firebase database
           if (jList.length === 0) {
             console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
             await Promise.all(
@@ -155,24 +231,32 @@ export default function App() {
             pList = defaultPersonnels;
           }
 
+          // Update local state with real data from cloud
           setJournalists(jList);
           setCategories(cList);
           setArticles(aList);
           setPersonnels(pList);
-          setIsLoading(false);
+
+          // Save back updated elements to Local Storage
+          localStorage.setItem('metaranews_articles', JSON.stringify(aList));
+          localStorage.setItem('metaranews_journalists', JSON.stringify(jList));
+          localStorage.setItem('metaranews_categories', JSON.stringify(cList));
+          localStorage.setItem('metaranews_personnels', JSON.stringify(pList));
+
+          setDbStatus('synced');
+          console.log("Sinkronisasi database awan Firebase berhasil dilakukan.");
         }
       } catch (err: any) {
-        console.error("Gagal memuat data dari Firebase Firestore:", err);
+        console.warn("Gagal menyinkronkan data dengan Firebase Firestore, bermigrasi ke cache browser:", err);
         if (active) {
           clearTimeout(timeoutId);
-          setConnectionError(err?.message || String(err));
-          setIsLoading(false);
+          setDbStatus('offline');
         }
       }
     }
-    
-    loadData();
-    
+
+    syncData();
+
     return () => {
       active = false;
       clearTimeout(timeoutId);
@@ -587,57 +671,6 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  if (connectionError) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6" id="connection-error">
-        <div className="bg-white p-8 rounded-2xl border border-red-100 shadow-xl max-w-md w-full text-center space-y-5">
-          <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto animate-pulse">
-            <AlertCircle className="w-6 h-6 text-red-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-800 text-base">Gagal Terhubung ke Database Cloud</h3>
-            <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
-              Koneksi ke database cloud Firebase Firestore sangat lambat, terputus, atau terhalang oleh pemblokir iklan (ad-blocker) / ekstensi di browser Anda.
-            </p>
-            <div className="mt-4 p-2 bg-red-50/50 rounded-lg border border-red-100 text-[9px] font-mono text-red-700 max-h-24 overflow-y-auto leading-normal text-left">
-              Detail Error: {connectionError}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 pt-2">
-            <button
-              onClick={() => {
-                setConnectionError(null);
-                setIsLoading(true);
-                window.location.reload();
-              }}
-              className="w-full bg-[#C61C23] hover:bg-red-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Coba Hubungkan Kembali
-            </button>
-            <button
-              onClick={() => {
-                setConnectionError(null);
-                setJournalists(INITIAL_JOURNALISTS);
-                setCategories(INITIAL_CATEGORIES);
-                setArticles(INITIAL_ARTICLES);
-                setPersonnels([
-                  { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi (Demo Mode)', journalistId: 'j9' },
-                  { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah (Demo Mode)', journalistId: 'j2' },
-                  { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso (Demo Mode)', journalistId: 'j1' }
-                ]);
-                setIsLoading(false);
-              }}
-              className="w-full bg-slate-150 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition-all cursor-pointer"
-            >
-              Jalankan Mode Demo (Hanya Baca)
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-6 animate-pulse" id="loading-spinner">
@@ -793,6 +826,24 @@ export default function App() {
                 <div className="flex items-center gap-1.5 leading-none">
                   <span className="font-extrabold text-slate-900 text-md tracking-tight">metaranews</span>
                   <span className="text-sky-600 font-extrabold text-[9px] px-1.5 py-0.5 rounded-sm bg-sky-50 border border-sky-200">ADMIN</span>
+                  
+                  {/* Database Sync Status Badge */}
+                  {dbStatus === 'synced' ? (
+                    <span className="bg-emerald-50 text-emerald-650 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs border border-emerald-200 flex items-center gap-1" title="Terhubung stabil dengan database Cloud Firestore. Sinkronisasi real-time aktif.">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Cloud
+                    </span>
+                  ) : dbStatus === 'connecting' ? (
+                    <span className="bg-amber-50 text-amber-650 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs border border-amber-200 flex items-center gap-1">
+                      <RefreshCw className="w-2 h-2 animate-spin text-amber-600" />
+                      Mencari...
+                    </span>
+                  ) : (
+                    <span className="bg-red-50 text-red-650 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-xs border border-red-200 flex items-center gap-1" title="Sistem menggunakan penyimpanan lokal aman di browser ini karena firewall atau koneksi lambat.">
+                      <CloudOff className="w-2.5 h-2.5 text-red-600" />
+                      Lokal
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] text-slate-400 font-semibold tracking-wide">Sistem Kinerja & Produktivitas Jurnalis</span>
               </div>

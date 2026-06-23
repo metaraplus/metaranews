@@ -90,12 +90,34 @@ export default function SpjCreator() {
   // Custom interactive features
   const [showSignatureStamp, setShowSignatureStamp] = useState(true);
 
-  // Setup cloud real-time listener on mount
+  // Setup cloud real-time listener on mount with instant offline cache fallback
   useEffect(() => {
     setIsLoading(true);
     setDbError(null);
 
-    // Setup real-time listener for "spjs" collection
+    // 1. Instantly pull and load from Local Storage cache for super-fast load
+    const stored = localStorage.getItem('metara_spjs');
+    let localList: Spj[] = [];
+    if (stored) {
+      try {
+        localList = JSON.parse(stored) as Spj[];
+      } catch (e) {
+        console.error("Gagal mengurai cache SPJ:", e);
+      }
+    }
+
+    if (localList.length === 0) {
+      localList = [{ ...dummySpjPreset, id: 'spj-preset-1', createdAt: new Date().toISOString() }];
+    }
+
+    setSpjs(localList);
+    setSelectedSpj(prevSelected => {
+      if (prevSelected) return prevSelected;
+      return localList[0] || null;
+    });
+    setIsLoading(false);
+
+    // 2. Setup real-time background listener for "spjs" collection
     const unsubscribe = onSnapshot(collection(db, 'spjs'), (snap) => {
       const remoteList = snap.docs.map(docSnap => docSnap.data() as Spj);
       
@@ -104,6 +126,12 @@ export default function SpjCreator() {
         remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
         setSpjs(remoteList);
         
+        try {
+          localStorage.setItem('metara_spjs', JSON.stringify(remoteList));
+        } catch (e) {
+          console.error("Gagal memperbarui cache SPJ:", e);
+        }
+        
         setSelectedSpj(current => {
           if (!current || current.id === 'spj-preset-1') {
             return remoteList[0] || null;
@@ -111,32 +139,29 @@ export default function SpjCreator() {
           const matched = remoteList.find(item => item.id === current.id);
           return matched || remoteList[0];
         });
-        setIsLoading(false);
       } else {
         // If Firestore is completely empty, register the initial default dummy preset
-        const defaultSample = { ...dummySpjPreset, createdAt: new Date().toISOString() };
+        const defaultSample = { ...dummySpjPreset, id: 'spj-preset-1', createdAt: new Date().toISOString() };
         setDoc(doc(db, 'spjs', defaultSample.id), defaultSample)
-          .then(() => {
-            setIsLoading(false);
-          })
           .catch(err => {
             console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
-            setDbError(err.message || String(err));
-            setIsLoading(false);
           });
       }
     }, (err) => {
-      console.error("Real-time listener on spjs failed:", err);
-      setDbError(err.message || String(err));
-      setIsLoading(false);
+      console.warn("Koneksi real-time SPJ terhalang, beralih penuh ke cache browser aman:", err);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Save changes to local state in-memory (no local storage triggers)
+  // Save changes to local state & local storage for maximum resilience
   const persistList = (updated: Spj[]) => {
     setSpjs(updated);
+    try {
+      localStorage.setItem('metara_spjs', JSON.stringify(updated));
+    } catch (e) {
+      console.error("Gagal menyimpan ke localStorage:", e);
+    }
   };
 
   // Create a brand new empty SPJ (Invoice)
