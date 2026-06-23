@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "Article": {
+      "title": "Article",
+      "description": "News article document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["Karya Sendiri", "Rilis"] },
+        "reporter": { "type": "string" },
+        "writer": { "type": "string" },
+        "documenter": { "type": "string" },
+        "status": { "type": "string", "enum": ["Tayang", "Draft"] },
+        "views": { "type": "number" },
+        "url": { "type": "string" }
+      },
+      "required": ["id", "title", "date", "category", "type", "reporter", "writer", "documenter", "status", "views"]
+    },
+    "Journalist": {
+      "title": "Journalist",
+      "description": "Wartawan/jurnalis document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["Reporter", "Redaktur", "Fotografer", "Kontributor", "Magang"] },
+        "coverage": { "type": "string" }
+      },
+      "required": ["id", "name", "role"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "News category document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" }
+      },
+      "required": ["id", "name", "color"]
+    },
+    "Personnel": {
+      "title": "Personnel",
+      "description": "User account/staff document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Manager", "Staff"] },
+        "fullName": { "type": "string" },
+        "journalistId": { "type": "string" }
+      },
+      "required": ["id", "username", "role", "fullName"]
+    },
+    "Quotation": {
+      "title": "Quotation",
+      "description": "Quotation letter document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "letterNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "attachments": { "type": "string" },
+        "subject": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "recipientTitle": { "type": "string" },
+        "recipientCompany": { "type": "string" },
+        "recipientAddress": { "type": "string" },
+        "bodyOpening": { "type": "string" },
+        "items": { "type": "array" },
+        "bodyClosing": { "type": "string" },
+        "signerName": { "type": "string" },
+        "signerTitle": { "type": "string" },
+        "vatPercent": { "type": "number" },
+        "showVat": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "letterNumber", "date", "subject", "recipientCompany"]
+    },
+    "Spj": {
+      "title": "Spj",
+      "description": "SPJ/Invoice document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "recipientAddress": { "type": "string" },
+        "items": { "type": "array" },
+        "bankName": { "type": "string" },
+        "bankAccount": { "type": "string" },
+        "bankOwner": { "type": "string" },
+        "signerName": { "type": "string" },
+        "signerTitle": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "invoiceNumber", "date", "recipientName"]
+    }
+  },
+  "firestore": {
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Store articles data"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Store article categories data"
+    },
+    "/personnels/{personnelId}": {
+      "schema": "Personnel",
+      "description": "Store app users accounts"
+    },
+    "/journalists/{journalistId}": {
+      "schema": "Journalist",
+      "description": "Store journalist metadata"
+    },
+    "/quotations/{quotationId}": {
+      "schema": "Quotation",
+      "description": "Store quotation letters documents"
+    },
+    "/spjs/{spjId}": {
+      "schema": "Spj",
+      "description": "Store spj/invoice documents"
+    }
+  }
+}

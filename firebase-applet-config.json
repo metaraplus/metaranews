@@ -1,10 +1,10 @@
 {
-  "projectId": "metaranews-1377d",
-  "appId": "1:706461689572:web:c61ac49246995347f16ef1",
-  "apiKey": "AIzaSyCkJMYYcFY0J4fyc7txj_CNvM8VnIO0Dqo",
-  "authDomain": "metaranews-1377d.firebaseapp.com",
+  "projectId": "metaranews-fe15d",
+  "appId": "1:186582031482:web:e5ffb821b10117bc832fc3",
+  "apiKey": "AIzaSyA4tMLUwUTcFwWZuyImTgj7HDPdvaWy4LU",
+  "authDomain": "metaranews-fe15d.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-69c184d0-5b30-47d2-b410-4a23184e9310",
-  "storageBucket": "metaranews-1377d.firebasestorage.app",
-  "messagingSenderId": "706461689572",
-  "measurementId": "G-6E5K5XVZVP"
+  "storageBucket": "metaranews-fe15d.firebasestorage.app",
+  "messagingSenderId": "186582031482",
+  "measurementId": ""
 }
