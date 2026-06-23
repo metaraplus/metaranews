@@ -84,35 +84,6 @@ export default function App() {
   // Fetch all collections from Firestore on mount
   useEffect(() => {
     let active = true;
-    let fallbackTriggered = false;
-
-    // Timeout: if connection or query takes more than 5 seconds, switch to local storage fallback
-    const timeoutId = setTimeout(() => {
-      if (active) {
-        console.warn("Koneksi Firebase lambat atau gagal. Menggunakan penyimpanan lokal sebagai cadangan.");
-        fallbackTriggered = true;
-        loadLocalFallback();
-      }
-    }, 5000);
-
-    function loadLocalFallback() {
-      const localArticles = localStorage.getItem('metaranews_articles');
-      const localJournalists = localStorage.getItem('metaranews_journalists');
-      const localCategories = localStorage.getItem('metaranews_categories');
-      const localPersonnels = localStorage.getItem('metaranews_personnels');
-
-      setArticles(localArticles ? JSON.parse(localArticles) : INITIAL_ARTICLES);
-      setJournalists(localJournalists ? JSON.parse(localJournalists) : INITIAL_JOURNALISTS);
-      setCategories(localCategories ? JSON.parse(localCategories) : INITIAL_CATEGORIES);
-
-      const defaultPersonnels: Personnel[] = [
-        { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
-        { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
-        { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
-      ];
-      setPersonnels(localPersonnels ? JSON.parse(localPersonnels) : defaultPersonnels);
-      setIsLoading(false);
-    }
     
     async function loadData() {
       try {
@@ -125,8 +96,6 @@ export default function App() {
           getDocs(collection(db, 'articles')),
           getDocs(collection(db, 'personnels'))
         ]);
-
-        if (fallbackTriggered) return;
 
         let jList = jSnap.docs.map(docSnap => docSnap.data() as Journalist);
         let cList = cSnap.docs.map(docSnap => docSnap.data() as Category);
@@ -171,26 +140,17 @@ export default function App() {
           pList = defaultPersonnels;
         }
 
-        if (active && !fallbackTriggered) {
-          clearTimeout(timeoutId);
+        if (active) {
           setJournalists(jList);
           setCategories(cList);
           setArticles(aList);
           setPersonnels(pList);
-          
-          // Save a localized copy in case of future network interruption
-          localStorage.setItem('metaranews_articles', JSON.stringify(aList));
-          localStorage.setItem('metaranews_journalists', JSON.stringify(jList));
-          localStorage.setItem('metaranews_categories', JSON.stringify(cList));
-          localStorage.setItem('metaranews_personnels', JSON.stringify(pList));
-          
           setIsLoading(false);
         }
       } catch (err) {
         console.error("Gagal memuat data dari Firebase Firestore:", err);
-        if (active && !fallbackTriggered) {
-          clearTimeout(timeoutId);
-          loadLocalFallback();
+        if (active) {
+          setIsLoading(false);
         }
       }
     }
@@ -199,34 +159,8 @@ export default function App() {
     
     return () => {
       active = false;
-      clearTimeout(timeoutId);
     };
   }, []);
-
-  // Save changes to localStorage as a redundant backup layer
-  useEffect(() => {
-    if (articles.length > 0) {
-      localStorage.setItem('metaranews_articles', JSON.stringify(articles));
-    }
-  }, [articles]);
-
-  useEffect(() => {
-    if (journalists.length > 0) {
-      localStorage.setItem('metaranews_journalists', JSON.stringify(journalists));
-    }
-  }, [journalists]);
-
-  useEffect(() => {
-    if (categories.length > 0) {
-      localStorage.setItem('metaranews_categories', JSON.stringify(categories));
-    }
-  }, [categories]);
-
-  useEffect(() => {
-    if (personnels.length > 0) {
-      localStorage.setItem('metaranews_personnels', JSON.stringify(personnels));
-    }
-  }, [personnels]);
 
   // Enforce access rights tab limits
   useEffect(() => {
@@ -276,11 +210,10 @@ export default function App() {
         // Edit mode
         const updated = articles.map(art => art.id === articleData.id ? { ...art, ...articleData } as Article : art);
         setArticles(updated);
-        localStorage.setItem('metaranews_articles', JSON.stringify(updated));
         try {
           await setDoc(doc(db, 'articles', articleData.id), { ...articleData } as Article);
         } catch (dbErr) {
-          console.warn("Sinkronisasi Firestore gagal, data disimpan secara lokal:", dbErr);
+          console.warn("Sinkronisasi Firestore gagal:", dbErr);
         }
       } else {
         // Add mode
@@ -291,11 +224,10 @@ export default function App() {
         } as Article;
         const updated = [newArticle, ...articles];
         setArticles(updated);
-        localStorage.setItem('metaranews_articles', JSON.stringify(updated));
         try {
           await setDoc(doc(db, 'articles', newId), newArticle);
         } catch (dbErr) {
-          console.warn("Sinkronisasi Firestore gagal, data disimpan secara lokal:", dbErr);
+          console.warn("Sinkronisasi Firestore gagal:", dbErr);
         }
       }
     } catch (err) {
@@ -308,11 +240,10 @@ export default function App() {
     try {
       const updated = articles.filter(a => a.id !== id);
       setArticles(updated);
-      localStorage.setItem('metaranews_articles', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'articles', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus item dari Firestore, perubahan tetap disimpan di browser:", dbErr);
+        console.warn("Gagal menghapus item dari Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus artikel:", err);
@@ -335,11 +266,10 @@ export default function App() {
       };
       const updated = [...journalists, newJurn];
       setJournalists(updated);
-      localStorage.setItem('metaranews_journalists', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'journalists', newJurn.id), newJurn);
       } catch (dbErr) {
-        console.warn("Gagal mengunggah jurnalis ke Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal mengunggah jurnalis ke Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menyimpan jurnalis:", err);
@@ -350,11 +280,10 @@ export default function App() {
     try {
       const updated = journalists.filter(j => j.id !== id);
       setJournalists(updated);
-      localStorage.setItem('metaranews_journalists', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'journalists', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus jurnalis di Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal menghapus jurnalis di Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus jurnalis:", err);
@@ -368,11 +297,10 @@ export default function App() {
 
       const updatedJs = journalists.map(j => j.id === id ? { ...j, name, role, coverage } : j);
       setJournalists(updatedJs);
-      localStorage.setItem('metaranews_journalists', JSON.stringify(updatedJs));
       try {
         await setDoc(doc(db, 'journalists', id), { id, name, role, coverage });
       } catch (dbErr) {
-        console.warn("Gagal memperbarui jurnalis di Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal memperbarui jurnalis di Firestore:", dbErr);
       }
 
       if (oldName && oldName !== name) {
@@ -387,7 +315,6 @@ export default function App() {
 
         const newArticles = articles.map((art, index) => updatedArticles[index].changed ? updatedArticles[index].updated : art);
         setArticles(newArticles);
-        localStorage.setItem('metaranews_articles', JSON.stringify(newArticles));
 
         // Sync renamed references in Firestore non-blockingly
         for (const item of updatedArticles) {
@@ -415,11 +342,10 @@ export default function App() {
       };
       const updated = [...categories, newCat];
       setCategories(updated);
-      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'categories', newCat.id), newCat);
       } catch (dbErr) {
-        console.warn("Gagal menyimpan kategori ke Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal menyimpan kategori ke Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menyimpan kategori:", err);
@@ -430,11 +356,10 @@ export default function App() {
     try {
       const updated = categories.filter(c => c.id !== id);
       setCategories(updated);
-      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'categories', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus kategori dari Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal menghapus kategori dari Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus kategori:", err);
@@ -446,11 +371,10 @@ export default function App() {
       const updatedCat = { id, name, color };
       const updated = categories.map(c => c.id === id ? updatedCat : c);
       setCategories(updated);
-      localStorage.setItem('metaranews_categories', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'categories', id), updatedCat);
       } catch (dbErr) {
-        console.warn("Gagal memperbarui kategori di Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal memperbarui kategori di Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal memperbarui kategori:", err);
@@ -470,11 +394,10 @@ export default function App() {
       };
       const updated = [...personnels, newPers];
       setPersonnels(updated);
-      localStorage.setItem('metaranews_personnels', JSON.stringify(updated));
       try {
         await setDoc(doc(db, 'personnels', newPers.id), newPers);
       } catch (dbErr) {
-        console.warn("Gagal mengunggah personil ke Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal mengunggah personil ke Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menyimpan personil:", err);
@@ -495,19 +418,15 @@ export default function App() {
           const newItem = { ...base, ...updated } as Personnel;
           updatedList = [...prev, newItem];
         }
-        localStorage.setItem('metaranews_personnels', JSON.stringify(updatedList));
         return updatedList;
       });
 
-      // Directly sync target state from local storage write to avoid state closure delay
-      const localUpdatedList = JSON.parse(localStorage.getItem('metaranews_personnels') || '[]');
-      const targetDoc = localUpdatedList.find((p: Personnel) => p.id === id);
-      if (targetDoc) {
-        try {
-          await setDoc(doc(db, 'personnels', id), targetDoc);
-        } catch (dbErr) {
-          console.warn("Gagal memutasi personil di Firestore, disimpan lokal:", dbErr);
-        }
+      const activeCurrentDoc = (personnels.find(p => p.id === id) || currentUser || {}) as Personnel;
+      const finalDoc = { ...activeCurrentDoc, ...updated, id } as Personnel;
+      try {
+        await setDoc(doc(db, 'personnels', id), finalDoc);
+      } catch (dbErr) {
+        console.warn("Gagal memutasi personil di Firestore:", dbErr);
       }
 
       if (currentUser && currentUser.id === id) {
@@ -525,11 +444,10 @@ export default function App() {
     try {
       const updated = personnels.filter(p => p.id !== id);
       setPersonnels(updated);
-      localStorage.setItem('metaranews_personnels', JSON.stringify(updated));
       try {
         await deleteDoc(doc(db, 'personnels', id));
       } catch (dbErr) {
-        console.warn("Gagal menghapus personil di Firestore, tersimpan lokal:", dbErr);
+        console.warn("Gagal menghapus personil di Firestore:", dbErr);
       }
     } catch (err) {
       console.error("Gagal menghapus personil:", err);

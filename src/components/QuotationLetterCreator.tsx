@@ -58,6 +58,8 @@ export default function QuotationLetterCreator() {
   const [errorMsg, setErrorMsg] = useState('');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // Ref to hold the auto-save debounce timer
   const saveTimeoutRef = useRef<any>(null);
@@ -107,29 +109,10 @@ export default function QuotationLetterCreator() {
     showVat: true
   };
 
-  // Safe fetch from Firestore with initial local render and background merge sync
+  // Setup cloud real-time listener on mount
   useEffect(() => {
-    // 1. Instantly load from localStorage so the UI is immediately populated and responsive
-    const stored = localStorage.getItem('metara_quotations');
-    let localList: Quotation[] = [];
-    if (stored) {
-      try {
-        localList = JSON.parse(stored) as Quotation[];
-      } catch (e) {
-        console.error("Failed parsing stored quotations:", e);
-      }
-    }
-
-    if (localList.length === 0) {
-      localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
-    }
-
-    // Pre-populate state immediately from cache
-    setQuotations(localList);
-    setSelectedQuote(prevSelected => {
-      if (prevSelected) return prevSelected;
-      return localList[0] || null;
-    });
+    setIsLoading(true);
+    setDbError(null);
 
     // Setup real-time listener for "quotations" collection
     const unsubscribe = onSnapshot(collection(db, 'quotations'), (snap) => {
@@ -139,33 +122,40 @@ export default function QuotationLetterCreator() {
         // Master truth comes directly from Cloud DB
         remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
         setQuotations(remoteList);
-        localStorage.setItem('metara_quotations', JSON.stringify(remoteList));
         
         // Auto-select or preserve currently selected item
         setSelectedQuote(current => {
-          if (!current || (!stored && current.id === 'q-sample-preset')) {
+          if (!current || current.id === 'q-sample-preset') {
             return remoteList[0] || null;
           }
           const matched = remoteList.find(item => item.id === current.id);
           return matched || remoteList[0];
         });
+        setIsLoading(false);
       } else {
         // If Firestore is completely empty, register the initial default dummy preset
         const defaultSample = { ...dummyQuotationPreset, createdAt: new Date().toISOString() };
-        setDoc(doc(db, 'quotations', defaultSample.id), defaultSample).catch(err => {
-          console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
-        });
+        setDoc(doc(db, 'quotations', defaultSample.id), defaultSample)
+          .then(() => {
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
+            setDbError(err.message || String(err));
+            setIsLoading(false);
+          });
       }
     }, (err) => {
-      console.warn("Real-time listener on quotations failed, using offline cache:", err);
+      console.error("Real-time listener on quotations failed:", err);
+      setDbError(err.message || String(err));
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Save to local storage whenever list modifications happen
+  // Save changes to local state in-memory (no local storage triggers)
   const persistList = (updated: Quotation[]) => {
-    localStorage.setItem('metara_quotations', JSON.stringify(updated));
     setQuotations(updated);
   };
 
@@ -488,7 +478,23 @@ export default function QuotationLetterCreator() {
         {/* Scrollable list of quotes */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-3xs">
           <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100">
-            {filteredQuotations.length === 0 ? (
+            {isLoading ? (
+              <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                <RefreshCw className="w-5 h-5 animate-spin text-sky-600" />
+                <span>Memuat data dari cloud database...</span>
+              </div>
+            ) : dbError ? (
+              <div className="p-8 text-center text-xs text-red-500 bg-red-50/50 m-3 rounded-xl border border-red-100 flex flex-col items-center justify-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <span className="font-bold">Gagal Terhubung</span>
+                <span className="text-[10px] text-slate-500 leading-normal">
+                  Sistem gagal mengakses database cloud Firestore. Pastikan Firestore rules diperbaiki atau koneksi internet stabil.
+                </span>
+                <span className="text-[8px] font-mono text-red-600 border border-red-100 p-1 rounded bg-white max-w-full overflow-hidden truncate">
+                  {dbError}
+                </span>
+              </div>
+            ) : filteredQuotations.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400 italic">
                 {searchQuery ? 'Tidak ada hasil pencarian.' : 'Belum ada formulir surat penawaran.'}
               </div>

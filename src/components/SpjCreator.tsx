@@ -81,6 +81,8 @@ export default function SpjCreator() {
   const [errorMsg, setErrorMsg] = useState('');
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
   
   // Ref to hold the auto-save debounce timer
   const saveTimeoutRef = useRef<any>(null);
@@ -88,30 +90,10 @@ export default function SpjCreator() {
   // Custom interactive features
   const [showSignatureStamp, setShowSignatureStamp] = useState(true);
 
-  // Safe fetch from Firestore with initial local render and real-time subscription
+  // Setup cloud real-time listener on mount
   useEffect(() => {
-    // 1. Instantly load from localStorage for speed
-    const stored = localStorage.getItem('metara_spjs');
-    let localList: Spj[] = [];
-    if (stored) {
-      try {
-        localList = JSON.parse(stored) as Spj[];
-      } catch (e) {
-        console.error("Failed parsing stored SPJs:", e);
-      }
-    }
-
-    // If local list is empty, start with dummy preset
-    if (localList.length === 0) {
-      localList = [{ ...dummySpjPreset, createdAt: new Date().toISOString() }];
-    }
-
-    // Pre-populate state immediately from cache
-    setSpjs(localList);
-    setSelectedSpj(prevSelected => {
-      if (prevSelected) return prevSelected;
-      return localList[0] || null;
-    });
+    setIsLoading(true);
+    setDbError(null);
 
     // Setup real-time listener for "spjs" collection
     const unsubscribe = onSnapshot(collection(db, 'spjs'), (snap) => {
@@ -121,32 +103,39 @@ export default function SpjCreator() {
         // Master truth comes directly from Cloud DB
         remoteList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
         setSpjs(remoteList);
-        localStorage.setItem('metara_spjs', JSON.stringify(remoteList));
         
         setSelectedSpj(current => {
-          if (!current || (!stored && current.id === 'spj-preset-1')) {
+          if (!current || current.id === 'spj-preset-1') {
             return remoteList[0] || null;
           }
           const matched = remoteList.find(item => item.id === current.id);
           return matched || remoteList[0];
         });
+        setIsLoading(false);
       } else {
         // If Firestore is completely empty, register the initial default dummy preset
         const defaultSample = { ...dummySpjPreset, createdAt: new Date().toISOString() };
-        setDoc(doc(db, 'spjs', defaultSample.id), defaultSample).catch(err => {
-          console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
-        });
+        setDoc(doc(db, 'spjs', defaultSample.id), defaultSample)
+          .then(() => {
+            setIsLoading(false);
+          })
+          .catch(err => {
+            console.error("Gagal meluncurkan preset sampel ke Firestore:", err);
+            setDbError(err.message || String(err));
+            setIsLoading(false);
+          });
       }
     }, (err) => {
-      console.warn("Real-time listener on spjs failed, using offline cache:", err);
+      console.error("Real-time listener on spjs failed:", err);
+      setDbError(err.message || String(err));
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Save to local storage whenever list modifications happen
+  // Save changes to local state in-memory (no local storage triggers)
   const persistList = (updated: Spj[]) => {
-    localStorage.setItem('metara_spjs', JSON.stringify(updated));
     setSpjs(updated);
   };
 
@@ -458,51 +447,69 @@ export default function SpjCreator() {
 
         {/* SPJ List Container */}
         <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1" id="spj-list-scroll">
-          {filteredSpjs.map(s => {
-            const isSelected = selectedSpj && selectedSpj.id === s.id;
-            const total = s.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-            return (
-              <div
-                key={s.id}
-                className={`p-3 rounded-xl border transition-all text-left flex justify-between items-start cursor-pointer relative group ${
-                  isSelected 
-                    ? 'border-[#C61C23] bg-red-50/40 shadow-xs' 
-                    : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
-                }`}
-                onClick={() => setSelectedSpj(s)}
-              >
-                <div className="space-y-1 max-w-[80%]">
-                  <div className="font-black text-xs text-slate-800 line-clamp-1 uppercase leading-none">
-                    {s.recipientName || 'Draft SPJ'}
+          {isLoading ? (
+            <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+              <RefreshCw className="w-5 h-5 animate-spin text-[#C61C23]" />
+              <span>Memuat arsip SPJ dari cloud...</span>
+            </div>
+          ) : dbError ? (
+            <div className="p-6 text-center text-xs text-red-500 bg-red-50/50 m-2 rounded-xl border border-red-100 flex flex-col items-center justify-center gap-2">
+              <AlertCircle className="w-5 h-5 text-[#C61C23]" />
+              <span className="font-bold">Gagal Terhubung</span>
+              <span className="text-[10px] text-slate-500 leading-normal">
+                Sistem gagal mengakses database cloud Firestore. Pastikan Firestore rules diperbaiki atau koneksi internet stabil.
+              </span>
+              <span className="text-[8px] font-mono text-red-600 border border-red-100 p-1 rounded bg-white max-w-full overflow-hidden truncate">
+                {dbError}
+              </span>
+            </div>
+          ) : (
+            filteredSpjs.map(s => {
+              const isSelected = selectedSpj && selectedSpj.id === s.id;
+              const total = s.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+              return (
+                <div
+                  key={s.id}
+                  className={`p-3 rounded-xl border transition-all text-left flex justify-between items-start cursor-pointer relative group ${
+                    isSelected 
+                      ? 'border-[#C61C23] bg-red-50/40 shadow-xs' 
+                      : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50/50'
+                  }`}
+                  onClick={() => setSelectedSpj(s)}
+                >
+                  <div className="space-y-1 max-w-[80%]">
+                    <div className="font-black text-xs text-slate-800 line-clamp-1 uppercase leading-none">
+                      {s.recipientName || 'Draft SPJ'}
+                    </div>
+                    <div className="text-[9.5px] text-slate-500 font-mono line-clamp-1">
+                      {s.invoiceNumber}
+                    </div>
+                    <div className="text-[9.5px] text-[#C61C23] font-black font-mono">
+                      Rp {formatRupiah(total)}
+                    </div>
                   </div>
-                  <div className="text-[9.5px] text-slate-500 font-mono line-clamp-1">
-                    {s.invoiceNumber}
-                  </div>
-                  <div className="text-[9.5px] text-[#C61C23] font-black font-mono">
-                    Rp {formatRupiah(total)}
+
+                  <div className="flex flex-col items-end justify-between h-full space-y-3">
+                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
+                      {formatIndonesianDate(s.date)}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTargetId(s.id);
+                      }}
+                      className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      title="Hapus Dokumen"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
+              );
+            })
+          )}
 
-                <div className="flex flex-col items-end justify-between h-full space-y-3">
-                  <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
-                    {formatIndonesianDate(s.date)}
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTargetId(s.id);
-                    }}
-                    className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                    title="Hapus Dokumen"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredSpjs.length === 0 && (
+          {!isLoading && !dbError && filteredSpjs.length === 0 && (
             <div className="p-8 text-center text-xs text-slate-400 italic">
               {searchQuery ? 'Tidak ada hasil pencarian.' : 'Belum ada dokumen SPJ.'}
             </div>
