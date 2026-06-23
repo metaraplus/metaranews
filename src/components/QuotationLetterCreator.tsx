@@ -107,6 +107,7 @@ export default function QuotationLetterCreator() {
       // 1. Instantly load from localStorage so the UI is immediately populated and responsive
       const stored = localStorage.getItem('metara_quotations');
       let localList: Quotation[] = [];
+      const isFirstTime = (stored === null);
       if (stored) {
         try {
           localList = JSON.parse(stored) as Quotation[];
@@ -115,8 +116,8 @@ export default function QuotationLetterCreator() {
         }
       }
 
-      // If local list is empty, start with dummy preset
-      if (localList.length === 0) {
+      // If it's the absolute first run (no stored in localStorage), start with dummy preset
+      if (isFirstTime && localList.length === 0) {
         localList = [{ ...dummyQuotationPreset, createdAt: new Date().toISOString() }];
       }
 
@@ -172,36 +173,36 @@ export default function QuotationLetterCreator() {
         });
 
         const mergedList = Array.from(mergedMap.values());
-        if (mergedList.length > 0) {
-          mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
-          setQuotations(mergedList);
-          
-          // Try to retain the current selection if it still exists
-          const postRequestedId = localStorage.getItem('metara_active_quotation_id');
-          if (postRequestedId) {
-            const found = mergedList.find(q => q.id === postRequestedId);
-            if (found) {
-              setSelectedQuote(found);
-              localStorage.removeItem('metara_active_quotation_id');
-            } else if (localList[0]) {
-              const currentSelected = mergedList.find(q => q.id === localList[0].id);
-              setSelectedQuote(currentSelected || mergedList[0]);
-            } else {
-              setSelectedQuote(mergedList[0]);
-            }
+        
+        // Always sort and update even if list is empty to allow deletion
+        mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
+        setQuotations(mergedList);
+        
+        // Try to retain the current selection if it still exists
+        const postRequestedId = localStorage.getItem('metara_active_quotation_id');
+        if (postRequestedId) {
+          const found = mergedList.find(q => q.id === postRequestedId);
+          if (found) {
+            setSelectedQuote(found);
+            localStorage.removeItem('metara_active_quotation_id');
           } else if (localList[0]) {
             const currentSelected = mergedList.find(q => q.id === localList[0].id);
-            if (currentSelected) {
-              setSelectedQuote(currentSelected);
-            } else {
-              setSelectedQuote(mergedList[0]);
-            }
+            setSelectedQuote(currentSelected || mergedList[0] || null);
           } else {
-            setSelectedQuote(mergedList[0]);
+            setSelectedQuote(mergedList[0] || null);
           }
-
-          localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
+        } else if (localList[0]) {
+          const currentSelected = mergedList.find(q => q.id === localList[0].id);
+          if (currentSelected) {
+            setSelectedQuote(currentSelected);
+          } else {
+            setSelectedQuote(mergedList[0] || null);
+          }
+        } else {
+          setSelectedQuote(mergedList[0] || null);
         }
+
+        localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
       } catch (err) {
         console.warn("Using offline mode as Firestore is unreachable during startup:", err);
       }
