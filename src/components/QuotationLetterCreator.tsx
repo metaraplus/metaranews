@@ -122,7 +122,20 @@ export default function QuotationLetterCreator() {
 
       // Pre-populate state immediately
       setQuotations(localList);
-      setSelectedQuote(localList[0] || null);
+      
+      const requestedId = localStorage.getItem('metara_active_quotation_id');
+      if (requestedId) {
+        const found = localList.find(q => q.id === requestedId);
+        if (found) {
+          setSelectedQuote(found);
+          // clear it after matching
+          localStorage.removeItem('metara_active_quotation_id');
+        } else {
+          setSelectedQuote(localList[0] || null);
+        }
+      } else {
+        setSelectedQuote(localList[0] || null);
+      }
 
       // 2. Fetch from Firestore to sync and merge any remote documents
       try {
@@ -164,7 +177,19 @@ export default function QuotationLetterCreator() {
           setQuotations(mergedList);
           
           // Try to retain the current selection if it still exists
-          if (localList[0]) {
+          const postRequestedId = localStorage.getItem('metara_active_quotation_id');
+          if (postRequestedId) {
+            const found = mergedList.find(q => q.id === postRequestedId);
+            if (found) {
+              setSelectedQuote(found);
+              localStorage.removeItem('metara_active_quotation_id');
+            } else if (localList[0]) {
+              const currentSelected = mergedList.find(q => q.id === localList[0].id);
+              setSelectedQuote(currentSelected || mergedList[0]);
+            } else {
+              setSelectedQuote(mergedList[0]);
+            }
+          } else if (localList[0]) {
             const currentSelected = mergedList.find(q => q.id === localList[0].id);
             if (currentSelected) {
               setSelectedQuote(currentSelected);

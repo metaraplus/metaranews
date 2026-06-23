@@ -104,7 +104,20 @@ export default function SpjCreator() {
 
       // Pre-populate state immediately
       setSpjs(localList);
-      setSelectedSpj(localList[0] || null);
+      
+      const requestedId = localStorage.getItem('metara_active_spj_id');
+      if (requestedId) {
+        const found = localList.find(s => s.id === requestedId);
+        if (found) {
+          setSelectedSpj(found);
+          // clear it after matching
+          localStorage.removeItem('metara_active_spj_id');
+        } else {
+          setSelectedSpj(localList[0] || null);
+        }
+      } else {
+        setSelectedSpj(localList[0] || null);
+      }
 
       // 2. Fetch from Firestore to sync and merge
       try {
@@ -144,7 +157,19 @@ export default function SpjCreator() {
           mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
           setSpjs(mergedList);
           
-          if (localList[0]) {
+          const postRequestedId = localStorage.getItem('metara_active_spj_id');
+          if (postRequestedId) {
+            const found = mergedList.find(s => s.id === postRequestedId);
+            if (found) {
+              setSelectedSpj(found);
+              localStorage.removeItem('metara_active_spj_id');
+            } else if (localList[0]) {
+              const currentSelected = mergedList.find(s => s.id === localList[0].id);
+              setSelectedSpj(currentSelected || mergedList[0]);
+            } else {
+              setSelectedSpj(mergedList[0]);
+            }
+          } else if (localList[0]) {
             const currentSelected = mergedList.find(s => s.id === localList[0].id);
             if (currentSelected) {
               setSelectedSpj(currentSelected);

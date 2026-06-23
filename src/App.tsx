@@ -19,6 +19,7 @@ import ManagementPanel from './components/ManagementPanel';
 import PersonnelPanel from './components/PersonnelPanel';
 import QuotationLetterCreator from './components/QuotationLetterCreator';
 import SpjCreator from './components/SpjCreator';
+import LetterAgendaBook from './components/LetterAgendaBook';
 import { db, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from './firebase';
 import { 
   LayoutDashboard, 
@@ -39,7 +40,8 @@ import {
   EyeOff,
   Edit3,
   X,
-  Save
+  Save,
+  BookOpen
 } from 'lucide-react';
 
 export default function App() {
@@ -64,7 +66,7 @@ export default function App() {
 
   // --- Active Tab State ---
   const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
-  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj'>('laporan');
+  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
@@ -963,6 +965,19 @@ export default function App() {
                 <FileText className="w-4 h-4" />
                 Buat SPJ A4
               </button>
+
+              <button
+                onClick={() => setActiveTab('agenda')}
+                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === 'agenda'
+                    ? 'border-sky-600 text-sky-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                }`}
+                id="tab-agenda-btn"
+              >
+                <BookOpen className="w-4 h-4" />
+                Nomor Surat
+              </button>
               
               {/* Only Admin and Manager can see Wartawan & Rubrics settings */}
               {currentUser.role !== 'Staff' && (
@@ -1267,6 +1282,23 @@ export default function App() {
               </div>
 
               <SpjCreator />
+            </div>
+          )}
+
+          {/* --- TAB CONTENT 7: AGENDA BUKU NOMOR SURAT --- */}
+          {activeTab === 'agenda' && (
+            <div className="space-y-6 animate-in fade-in duration-200" id="agenda-tab-view">
+              <div>
+                <h3 className="font-bold text-slate-900 text-md flex items-center gap-2 no-print-element">
+                  <BookOpen className="w-5 h-5 text-sky-600" />
+                  Agenda Buku Nomor Surat (Letter Registry)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 no-print-element">
+                  Daftar rekapitulasi otomatis seluruh nomor surat penawaran dan SPJ/invoice yang telah dibuat, lengkap dengan status nominal anggaran dan pejabat penandatangan.
+                </p>
+              </div>
+
+              <LetterAgendaBook onNavigateToTab={(tab) => setActiveTab(tab)} />
             </div>
           )}
 
