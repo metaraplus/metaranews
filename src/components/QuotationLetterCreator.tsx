@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -55,6 +55,9 @@ export default function QuotationLetterCreator() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Ref to hold the auto-save debounce timer
+  const saveTimeoutRef = useRef<any>(null);
 
   // Sample Preset to load if empty or requested
   const dummyQuotationPreset: Quotation = {
@@ -147,9 +150,9 @@ export default function QuotationLetterCreator() {
           } else {
             // Both exist, keep the newer one based on updatedAt/createdAt
             const remoteItem = mergedMap.get(q.id)!;
-            const localTime = q.updatedAt || q.createdAt || '';
+            const localTime = q.updatedAt || '';
             const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
-            if (localTime > remoteTime) {
+            if (localTime && localTime > remoteTime) {
               mergedMap.set(q.id, q);
             }
           }
@@ -297,11 +300,31 @@ export default function QuotationLetterCreator() {
   // Handle nested updates for selectedQuote
   const updateField = (key: keyof Quotation, val: any) => {
     if (!selectedQuote) return;
-    const updated = { ...selectedQuote, [key]: val };
+    const nowStr = new Date().toISOString();
+    const updated = { 
+      ...selectedQuote, 
+      [key]: val,
+      updatedAt: nowStr
+    };
     setSelectedQuote(updated);
     
-    // Update temporary in memory list without force savings in firebase immediately (user clicks Save)
-    setQuotations(quotations.map(q => q.id === selectedQuote.id ? updated : q));
+    // Instantly update local list and localStorage so local operations/searches are lightning fast
+    const updatedList = quotations.map(q => q.id === selectedQuote.id ? updated : q);
+    persistList(updatedList);
+
+    // Cancel previous background save timer
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new save timer (auto-save to Firestore in background after 500ms of user typing idle)
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'quotations', updated.id), updated);
+      } catch (err) {
+        console.warn("Gagal menyimpan perubahan ke Firestore otomatis:", err);
+      }
+    }, 500);
   };
 
   // Handle items inside pricing table

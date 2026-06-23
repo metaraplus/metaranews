@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -80,6 +80,9 @@ export default function SpjCreator() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
+  // Ref to hold the auto-save debounce timer
+  const saveTimeoutRef = useRef<any>(null);
+
   // Custom interactive features
   const [showSignatureStamp, setShowSignatureStamp] = useState(true);
 
@@ -128,9 +131,9 @@ export default function SpjCreator() {
             mergedMap.set(s.id, s);
           } else {
             const remoteItem = mergedMap.get(s.id)!;
-            const localTime = s.updatedAt || s.createdAt || '';
+            const localTime = s.updatedAt || '';
             const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
-            if (localTime > remoteTime) {
+            if (localTime && localTime > remoteTime) {
               mergedMap.set(s.id, s);
             }
           }
@@ -269,11 +272,31 @@ export default function SpjCreator() {
   // Handle updates to selectedSpj fields
   const updateField = (key: keyof Spj, val: any) => {
     if (!selectedSpj) return;
-    const updated = { ...selectedSpj, [key]: val };
+    const nowStr = new Date().toISOString();
+    const updated = { 
+      ...selectedSpj, 
+      [key]: val,
+      updatedAt: nowStr
+    };
     setSelectedSpj(updated);
     
-    // Quick update in client memory list so search works naturally
-    setSpjs(spjs.map(s => s.id === selectedSpj.id ? updated : s));
+    // Instantly update local list and localStorage so local operations/searches are lightning fast
+    const updatedList = spjs.map(s => s.id === selectedSpj.id ? updated : s);
+    persistList(updatedList);
+
+    // Cancel previous background save timer
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new save timer (auto-save to Firestore in background after 500ms of user typing idle)
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await setDoc(doc(db, 'spjs', updated.id), updated);
+      } catch (err) {
+        console.warn("Gagal menyimpan perubahan ke Firestore otomatis:", err);
+      }
+    }, 500);
   };
 
   // Table items editor helpers
