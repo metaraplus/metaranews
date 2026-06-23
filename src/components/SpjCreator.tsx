@@ -126,9 +126,11 @@ export default function SpjCreator() {
           if (s && s.id) {
             const remoteItem = mergedMap.get(s.id);
             if (remoteItem) {
-              const localCreated = s.createdAt || '';
-              const remoteCreated = remoteItem.createdAt || '';
-              if (remoteCreated > localCreated) {
+              // Merge based on updatedAt or createdAt.
+              // If remote is newer or identical, remote wins to prevent stale cache override.
+              const localTime = s.updatedAt || s.createdAt || '';
+              const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
+              if (remoteTime >= localTime) {
                 mergedMap.set(s.id, remoteItem);
               } else {
                 mergedMap.set(s.id, s);
@@ -229,23 +231,26 @@ export default function SpjCreator() {
     setSaveSuccess(false);
 
     try {
-      const updatedList = spjs.map(s => s.id === selectedSpj.id ? selectedSpj : s);
+      const nowStr = new Date().toISOString();
+      const updatedSpj = {
+        ...selectedSpj,
+        updatedAt: nowStr,
+        createdAt: selectedSpj.createdAt || nowStr
+      };
+
+      const updatedList = spjs.map(s => s.id === updatedSpj.id ? updatedSpj : s);
       persistList(updatedList);
+      setSelectedSpj(updatedSpj);
 
       setSaveSuccess(true);
       setIsSaving(false);
       setTimeout(() => setSaveSuccess(false), 3000);
 
-      // Cloud Background Sync
-      setDoc(doc(db, 'spjs', selectedSpj.id), {
-        ...selectedSpj,
-        createdAt: selectedSpj.createdAt || new Date().toISOString()
-      }).catch((syncErr) => {
-        console.warn("Firestore sync SPJ will retry in background:", syncErr);
-      });
+      // Cloud Sync - await so that it's guaranteed to be in Firestore
+      await setDoc(doc(db, 'spjs', updatedSpj.id), updatedSpj);
     } catch (err: any) {
       console.error("Error saving SPJ:", err);
-      setErrorMsg('Gagal menyimpan perubahan secara lokal.');
+      setErrorMsg('Gagal menyimpan perubahan.');
       setIsSaving(false);
     }
   };

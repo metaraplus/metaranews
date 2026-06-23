@@ -178,11 +178,13 @@ export default function InvoicePaymentTracker() {
     try {
       const spjRef = doc(db, 'spjs', selectedSpj.id);
       
+      const nowStr = new Date().toISOString();
       const payload = {
         paymentDate: editIsPaid ? editPaymentDate : '',
         isPaid: editIsPaid,
         danaMasuk: editIsPaid ? editDanaMasuk : 0,
-        feeInsentif: editIsPaid ? editFeeInsentif : 0
+        feeInsentif: editIsPaid ? editFeeInsentif : 0,
+        updatedAt: nowStr
       };
 
       await updateDoc(spjRef, payload);

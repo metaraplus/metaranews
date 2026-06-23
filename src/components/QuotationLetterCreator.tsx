@@ -144,10 +144,11 @@ export default function QuotationLetterCreator() {
           if (q && q.id) {
             const remoteItem = mergedMap.get(q.id);
             if (remoteItem) {
-              // Both exist, let's keep the one with newer createdAt or just prefer the local one if isSaving was pending
-              const localCreated = q.createdAt || '';
-              const remoteCreated = remoteItem.createdAt || '';
-              if (remoteCreated > localCreated) {
+              // Both exist, let's keep the one with newer updatedAt or createdAt. 
+              // If remote is newer or identical, remote wins to prevent stale cache override.
+              const localTime = q.updatedAt || q.createdAt || '';
+              const remoteTime = remoteItem.updatedAt || remoteItem.createdAt || '';
+              if (remoteTime >= localTime) {
                 mergedMap.set(q.id, remoteItem);
               } else {
                 mergedMap.set(q.id, q);
@@ -255,25 +256,28 @@ export default function QuotationLetterCreator() {
     setSaveSuccess(false);
 
     try {
+      const nowStr = new Date().toISOString();
+      const updatedQuote = {
+        ...selectedQuote,
+        updatedAt: nowStr,
+        createdAt: selectedQuote.createdAt || nowStr
+      };
+
       // 1. Instantly write to LocalState & LocalStorage
-      const updatedList = quotations.map(q => q.id === selectedQuote.id ? selectedQuote : q);
+      const updatedList = quotations.map(q => q.id === updatedQuote.id ? updatedQuote : q);
       persistList(updatedList);
+      setSelectedQuote(updatedQuote);
 
       // 2. Clear loading and trigger success toast instantly so the UI is lightning-fast!
       setSaveSuccess(true);
       setIsSaving(false);
       setTimeout(() => setSaveSuccess(false), 3000);
 
-      // 3. Sync to Cloud Firestore in the background without blocking the UI rendering cycle
-      setDoc(doc(db, 'quotations', selectedQuote.id), {
-        ...selectedQuote,
-        createdAt: selectedQuote.createdAt || new Date().toISOString()
-      }).catch((syncErr) => {
-        console.warn("Firestore sync will retry in background:", syncErr);
-      });
+      // 3. Sync to Cloud Firestore - await the save so it is guaranteed on remote DB
+      await setDoc(doc(db, 'quotations', updatedQuote.id), updatedQuote);
     } catch (err: any) {
       console.error("Error saving quotation:", err);
-      setErrorMsg('Gagal menyimpan perubahan secara lokal.');
+      setErrorMsg('Gagal menyimpan perubahan.');
       setIsSaving(false);
     }
   };
