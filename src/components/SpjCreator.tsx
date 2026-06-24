@@ -364,27 +364,25 @@ export default function SpjCreator() {
   };
 
   const renderKopSurat = () => (
-    <div className="flex justify-between items-start border-b border-red-600 pb-3 relative z-10 w-full text-left">
+    <div className="flex justify-between items-start border-b border-[#E7312F] pb-3 relative z-10 w-full text-left">
       {/* Top Left: METARA LOGO */}
       <div className="flex items-start gap-4">
         <div className="flex flex-col items-center shrink-0">
-          {/* Emblem */}
-          <div className="w-[52px] h-[52px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
-            <svg viewBox="0 0 100 100" className="w-[82%] h-[82%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-              <path d="M50,45 L50,80" />
-            </svg>
-            <div className="absolute -top-2.5 left-[14px] right-[14px] flex flex-col items-center">
-              <div className="w-[24px] h-[24px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
-                <div className="w-[14px] h-[14px] rounded-full border-1.5 border-white relative flex items-center justify-center">
-                  <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
-                </div>
-              </div>
-            </div>
+          {/* Real Logo Image */}
+          <div className="w-[52px] h-[52px] flex items-center justify-center relative overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+              }}
+            />
           </div>
           {/* Metara text */}
           <div className="text-center mt-1 leading-none">
-            <span className="font-extrabold text-[#CC0000] text-[15px] tracking-tighter block uppercase">Metara</span>
+            <span className="font-extrabold text-[#E7312F] text-[15px] tracking-tighter block uppercase">Metara</span>
             <span className="text-slate-800 font-extrabold text-[6.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
             <span className="text-[4px] text-slate-400 tracking-tight block">a part of Media Nusantara Network</span>
           </div>
@@ -393,18 +391,18 @@ export default function SpjCreator() {
 
       {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA */}
       <div className="text-right flex-1 pl-4">
-        <h2 className="text-[#CC0000] font-black text-[16px] leading-tight uppercase font-sans tracking-tight">
+        <h2 className="text-[#E7312F] font-black text-[16px] leading-tight uppercase font-sans tracking-tight">
           PT. PORTAL DIGITAL MEDIA NUSANTARA
         </h2>
         <div className="text-slate-650 text-[8.5px] space-y-0.5 mt-1.5 font-medium leading-normal">
           <p className="text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
           <p className="text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
-          <p className="text-[#CC0000] font-bold">Telp. 0354-4545845 - +62 811-3500-466</p>
+          <p className="text-[#E7312F] font-bold">Telp. 0354-4545845 - +62 811-3500-466</p>
         </div>
       </div>
       
       {/* Red corner aesthetic box */}
-      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[45px] bg-[#CC0000] rounded-bl-2xl"></div>
+      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[45px] bg-[#E7312F] rounded-bl-2xl"></div>
     </div>
   );
 
@@ -412,23 +410,24 @@ export default function SpjCreator() {
     <div className="relative overflow-visible w-full text-left">
       {/* Floating white circle with the red antenna-signal emblem on bottom right */}
       <div className="absolute right-[18mm] bottom-[15px] w-[50px] h-[50px] flex items-center justify-center select-none overflow-visible z-20">
-        <div className="w-[44px] h-[44px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
-          <div className="w-[30px] h-[30px] rounded-full bg-[#CC0000] flex items-center justify-center relative text-white">
-            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-              <path d="M50,45 L50,80" />
-            </svg>
-            <div className="absolute -top-1.5 left-[7px] right-[7px] flex flex-col items-center">
-              <div className="w-[15px] h-[15px] rounded-full border border-white border-dashed relative flex items-center justify-center">
-                <span className="w-0.5 h-0.5 bg-yellow-300 rounded-full"></span>
-              </div>
-            </div>
+        <div className="w-[44px] h-[44px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
+          {/* Logo image inside footer */}
+          <div className="w-[30px] h-[30px] flex items-center justify-center relative overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+              }}
+            />
           </div>
         </div>
       </div>
 
       {/* Solid bottom Red strip bar */}
-      <div className="w-full h-8 bg-[#CC0000] flex items-center justify-start px-[18mm] relative z-10 text-white font-sans text-[8px] tracking-wide font-medium">
+      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[18mm] relative z-10 text-white font-sans text-[8px] tracking-wide font-medium">
         <div className="flex items-center gap-3">
           <div className="flex gap-1.5">
             <Instagram className="w-3.5 h-3.5 stroke-2" />

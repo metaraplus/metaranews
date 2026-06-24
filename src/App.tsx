@@ -670,8 +670,16 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8" id="login-layout">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-sky-500/20 animate-bounce">
-            M
+          <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain p-1"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+              }}
+            />
           </div>
           <div>
             <span className="font-extrabold text-slate-900 text-lg tracking-tight block leading-none">metaranews<strong className="text-sky-600">.co</strong></span>
@@ -790,8 +798,16 @@ export default function App() {
             
             {/* Branding Logo metaranews */}
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-sky-600 flex items-center justify-center text-white font-extrabold text-lg tracking-tighter shadow-md shadow-sky-500/20">
-                M
+              <div className="w-9 h-9 rounded-lg bg-white border border-slate-100 flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+                <img 
+                  src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+                  alt="Metaranews Logo" 
+                  className="w-full h-full object-contain p-1"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+                  }}
+                />
               </div>
               <div>
                 <div className="flex items-center gap-1.5 leading-none">

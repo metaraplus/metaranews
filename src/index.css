@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+@theme {
+  --color-sky-50: #fff5f5;
+  --color-sky-100: #ffe3e3;
+  --color-sky-200: #ffcbcb;
+  --color-sky-300: #ffa1a1;
+  --color-sky-400: #ff6b6b;
+  --color-sky-500: #fa5252;
+  --color-sky-505: #fa5252;
+  --color-sky-600: #e7312f;
+  --color-sky-650: #e7312f;
+  --color-sky-655: #d3201e;
+  --color-sky-700: #c92a2a;
+  --color-sky-800: #b01e1c;
+  --color-sky-850: #901412;
+  --color-sky-900: #740c0b;
+}
+
 @layer utilities {
   @media print {
     /* Hide all elements that are not part of the printed document */

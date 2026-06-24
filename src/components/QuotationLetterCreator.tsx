@@ -402,31 +402,26 @@ export default function QuotationLetterCreator() {
   };
 
   const renderKopSurat = () => (
-    <div className="flex justify-between items-start border-b-2 border-red-600 pb-4 relative z-10 w-full">
-      {/* Top Left: METARA SIGNAL LOGO RECONSTRUCTION */}
+    <div className="flex justify-between items-start border-b-2 border-[#E7312F] pb-4 relative z-10 w-full">
+      {/* Top Left: METARA LOGO FROM GOOGLE DRIVE */}
       <div className="flex items-start gap-4">
         {/* Logo container */}
         <div className="flex flex-col items-center">
-          {/* Red Signal Emblem */}
-          <div className="w-[62px] h-[62px] rounded-full bg-[#CC0000] border border-red-700 flex items-center justify-center relative overflow-visible shadow-xs text-white">
-            {/* Inside white stylized 'M' curve line */}
-            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-              <path d="M50,45 L50,80" />
-            </svg>
-            {/* Top antenna signals antenna circles radiating */}
-            <div className="absolute -top-3 left-[17px] right-[17px] flex flex-col items-center">
-              {/* concentric signal circles */}
-              <div className="w-[28px] h-[28px] rounded-full border-1.5 border-white border-dashed animate-pulse relative flex items-center justify-center">
-                <div className="w-[18px] h-[18px] rounded-full border-1.5 border-white relative flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 bg-yellow-300 rounded-full"></span>
-                </div>
-              </div>
-            </div>
+          {/* Logo image container */}
+          <div className="w-[62px] h-[62px] flex items-center justify-center relative overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+              }}
+            />
           </div>
           {/* Metara wordmark */}
           <div className="text-center mt-1.5 leading-none">
-            <span className="font-extrabold text-[#CC0000] text-[18px] tracking-tighter block uppercase">Metara</span>
+            <span className="font-extrabold text-[#E7312F] text-[18px] tracking-tighter block uppercase">Metara</span>
             <span className="text-slate-800 font-black text-[7.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
             <span className="text-[5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
           </div>
@@ -434,17 +429,17 @@ export default function QuotationLetterCreator() {
       </div>
       {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA and contact head */}
       <div className="text-right flex-1 pl-4">
-        <h2 className="text-[#CC0000] font-black text-[20px] leading-tight uppercase font-sans tracking-tight">
+        <h2 className="text-[#E7312F] font-black text-[20px] leading-tight uppercase font-sans tracking-tight">
           PT. PORTAL DIGITAL MEDIA NUSANTARA
         </h2>
         <div className="text-slate-650 text-[10px] space-y-0.5 mt-2 font-medium">
           <p className="leading-tight text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
           <p className="leading-tight text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
-          <p className="leading-tight text-[#CC0000] font-bold font-sans">Telp. 0354-4545845 - +62 811-3500-466</p>
+          <p className="leading-tight text-[#E7312F] font-bold font-sans">Telp. 0354-4545845 - +62 811-3500-466</p>
         </div>
       </div>
       {/* Top-Right Curve corner box block matching image */}
-      <div className="absolute top-[-18mm] right-[-18mm] w-[50px] h-[55px] bg-[#CC0000] rounded-bl-3xl"></div>
+      <div className="absolute top-[-18mm] right-[-18mm] w-[50px] h-[55px] bg-[#E7312F] rounded-bl-3xl"></div>
     </div>
   );
 
@@ -452,25 +447,23 @@ export default function QuotationLetterCreator() {
     <div className="relative overflow-visible w-full">
       {/* Tiny signal antenna tower logo printed in the lower right bottom corner exactly like image */}
       <div className="absolute right-[18mm] bottom-[15px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible">
-        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100">
-          {/* Red Antenna graphic waves */}
-          <div className="w-[32px] h-[32px] rounded-full bg-[#CC0000] flex items-center justify-center relative shadow-3xs text-white">
-            {/* waves concentric path */}
-            <svg viewBox="0 0 100 100" className="w-[84%] h-[84%] fill-none stroke-white" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-              <path d="M50,45 L50,80" />
-            </svg>
-            {/* Outer wave rings */}
-            <div className="absolute -top-2 left-[8px] right-[8px] flex flex-col items-center">
-              <div className="w-[18px] h-[18px] rounded-full border border-white border-dashed relative flex items-center justify-center">
-                <span className="w-1 h-1 bg-yellow-300 rounded-full"></span>
-              </div>
-            </div>
+        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
+          {/* Logo image inside footer */}
+          <div className="w-[32px] h-[32px] flex items-center justify-center relative overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+              }}
+            />
           </div>
         </div>
       </div>
       {/* Bottom Red strip band matching attached picture */}
-      <div className="w-full h-8 bg-[#CC0000]"></div>
+      <div className="w-full h-8 bg-[#E7312F]"></div>
     </div>
   );
 
@@ -997,14 +990,14 @@ export default function QuotationLetterCreator() {
 
                           {/* --- SUBTLE CENTER WATERMARK BACKGROUND --- */}
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                            <div className="w-[420px] h-[420px] rounded-full bg-[#CC0000]/[0.025] border-2 border-[#CC0000]/[0.02] flex items-center justify-center relative scale-110">
+                            <div className="w-[420px] h-[420px] rounded-full bg-[#E7312F]/[0.025] border-2 border-[#E7312F]/[0.02] flex items-center justify-center relative scale-110">
                               {/* Stylized M inside watermark */}
-                              <svg viewBox="0 0 100 100" className="w-[75%] h-[75%] fill-none stroke-[#CC0000]/[0.015]" strokeWidth="6" strokeLinecap="round">
+                              <svg viewBox="0 0 100 100" className="w-[75%] h-[75%] fill-none stroke-[#E7312F]/[0.015]" strokeWidth="6" strokeLinecap="round">
                                 <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
                                 <path d="M50,45 L50,80" />
                               </svg>
                               {/* Antenna circles */}
-                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-16 h-16 rounded-full border-2 border-dashed border-[#CC0000]/[0.015]"></div>
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-16 h-16 rounded-full border-2 border-dashed border-[#E7312F]/[0.015]"></div>
                             </div>
                           </div>
 
@@ -1054,7 +1047,7 @@ export default function QuotationLetterCreator() {
                             <div className="mt-6 relative z-10">
                               <table className="w-full border-collapse border border-slate-300 text-[11px] leading-relaxed shadow-3xs rounded-md overflow-hidden text-slate-800 font-sans">
                                 <thead>
-                                  <tr className="bg-[#CC0000] text-white text-center font-extrabold uppercase tracking-wide">
+                                  <tr className="bg-[#E7312F] text-white text-center font-extrabold uppercase tracking-wide">
                                     <th className="border border-slate-300 py-2.5 px-2 w-[5%]">No</th>
                                     <th className="border border-slate-300 py-2.5 px-3 w-[40%] text-left">Nama Program / Paket Layanan</th>
                                     <th className="border border-slate-300 py-2.5 px-2 w-[15%]">Volume</th>
@@ -1097,7 +1090,7 @@ export default function QuotationLetterCreator() {
                                   )}
                                   <tr className="bg-slate-200/80 font-black text-slate-900">
                                     <td colSpan={4} className="border border-slate-200 py-2.5 px-3 text-right uppercase tracking-wider text-[10.5px]">Total Penawaran Akhir (Nett)</td>
-                                    <td className="border border-slate-200 py-2.5 px-3 text-right font-mono text-[#CC0000] text-sm">{formatRupiah(getGrandTotal())}</td>
+                                    <td className="border border-slate-200 py-2.5 px-3 text-right font-mono text-[#E7312F] text-sm">{formatRupiah(getGrandTotal())}</td>
                                   </tr>
                                 </tbody>
                               </table>
