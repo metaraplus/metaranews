@@ -54,9 +54,10 @@ const formatRupiah = (num: number): string => {
 
 interface PaymentTrackerProps {
   onNavigateToTab: (tab: 'spj') => void;
+  selectedMonth?: string;
 }
 
-export default function PaymentTracker({ onNavigateToTab }: PaymentTrackerProps) {
+export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' }: PaymentTrackerProps) {
   const [spjs, setSpjs] = useState<Spj[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -201,11 +202,17 @@ export default function PaymentTracker({ onNavigateToTab }: PaymentTrackerProps)
       const matchStatus = selectedStatus === 'Semua' || statusValue === selectedStatus;
 
       // Date
-      const matchDate = selectedYearMonth === 'Semua' || s.date.startsWith(selectedYearMonth);
+      let matchDate = true;
+      if (selectedMonth && selectedMonth !== 'all') {
+        // If selectedMonth is active, filter by paymentDate (tanggal dana masuk)
+        matchDate = !!s.paymentDate && s.paymentDate.startsWith(selectedMonth);
+      } else {
+        matchDate = selectedYearMonth === 'Semua' || s.date.startsWith(selectedYearMonth);
+      }
 
       return matchSearch && matchStatus && matchDate;
     });
-  }, [spjs, searchQuery, selectedStatus, selectedYearMonth]);
+  }, [spjs, searchQuery, selectedStatus, selectedYearMonth, selectedMonth]);
 
   // Sorting Logic
   const sortedSpjs = useMemo(() => {
@@ -232,14 +239,14 @@ export default function PaymentTracker({ onNavigateToTab }: PaymentTrackerProps)
 
   // Statistics Calculation
   const stats = useMemo(() => {
-    let totalInvoices = spjs.length;
+    let totalInvoices = filteredSpjs.length;
     let paidCount = 0;
     let unpaidCount = 0;
     let totalPaidAmount = 0;
     let totalUnpaidAmount = 0;
     let totalMarketingFees = 0;
 
-    spjs.forEach(s => {
+    filteredSpjs.forEach(s => {
       const amount = getSpjTotal(s);
       const isPaid = s.paymentStatus === 'Lunas';
       if (isPaid) {
@@ -260,7 +267,7 @@ export default function PaymentTracker({ onNavigateToTab }: PaymentTrackerProps)
       totalUnpaidAmount,
       totalMarketingFees
     };
-  }, [spjs]);
+  }, [filteredSpjs]);
 
   // Pagination Calculations
   const paginatedSpjs = useMemo(() => {
@@ -445,22 +452,31 @@ export default function PaymentTracker({ onNavigateToTab }: PaymentTrackerProps)
           </div>
 
           {/* 2. Month Filter */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
-            <span className="text-slate-400 font-bold flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
-              Bulan Terbit:
-            </span>
-            <select
-              value={selectedYearMonth}
-              onChange={(e) => setSelectedYearMonth(e.target.value)}
-              className="font-extrabold bg-transparent border-0 p-0 text-slate-700 focus:ring-0 cursor-pointer text-xs"
-            >
-              <option value="Semua">Semua Bulan</option>
-              {yearMonthOptions.map(ym => (
-                <option key={ym} value={ym}>{ym}</option>
-              ))}
-            </select>
-          </div>
+          {!selectedMonth || selectedMonth === 'all' ? (
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
+              <span className="text-slate-400 font-bold flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                Bulan Terbit:
+              </span>
+              <select
+                value={selectedYearMonth}
+                onChange={(e) => setSelectedYearMonth(e.target.value)}
+                className="font-extrabold bg-transparent border-0 p-0 text-slate-700 focus:ring-0 cursor-pointer text-xs"
+              >
+                <option value="Semua">Semua Bulan</option>
+                {yearMonthOptions.map(ym => (
+                  <option key={ym} value={ym}>{ym}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-100 px-3 py-1.5 rounded-xl text-sky-700">
+              <Calendar className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
+              <span className="text-xs font-bold">
+                Bulan Dana Masuk: <strong className="font-extrabold underline decoration-sky-300 decoration-2 underline-offset-2">{selectedMonth}</strong>
+              </span>
+            </div>
+          )}
 
           {/* 3. Sorting Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">

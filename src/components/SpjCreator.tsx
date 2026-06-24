@@ -72,7 +72,11 @@ const dummySpjPreset: Spj = {
   signerTitle: 'DIREKTUR'
 };
 
-export default function SpjCreator() {
+interface SpjCreatorProps {
+  selectedMonth?: string;
+}
+
+export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
   const [spjs, setSpjs] = useState<Spj[]>([]);
   const [selectedSpj, setSelectedSpj] = useState<Spj | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -369,7 +373,7 @@ export default function SpjCreator() {
       <div className="flex items-start gap-4">
         <div className="flex flex-col items-center shrink-0">
           {/* Real Logo Image */}
-          <div className="w-[52px] h-[52px] flex items-center justify-center relative overflow-hidden">
+          <div className="w-[74px] h-[74px] flex items-center justify-center relative overflow-hidden">
             <img 
               src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
               alt="Metaranews Logo" 
@@ -383,8 +387,7 @@ export default function SpjCreator() {
           {/* Metara text */}
           <div className="text-center mt-1 leading-none">
             <span className="font-extrabold text-[#E7312F] text-[15px] tracking-tighter block uppercase">Metara</span>
-            <span className="text-slate-800 font-extrabold text-[6.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
-            <span className="text-[4px] text-slate-400 tracking-tight block">a part of Media Nusantara Network</span>
+            <span className="text-[4.5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
           </div>
         </div>
       </div>
@@ -443,7 +446,10 @@ export default function SpjCreator() {
   // Filter list by recipient name or invoice number
   const filteredSpjs = spjs.filter(s => {
     const term = searchQuery.toLowerCase();
-    return s.recipientName.toLowerCase().includes(term) || s.invoiceNumber.toLowerCase().includes(term);
+    const matchesSearch = s.recipientName.toLowerCase().includes(term) || s.invoiceNumber.toLowerCase().includes(term);
+    if (!matchesSearch) return false;
+    if (selectedMonth === 'all') return true;
+    return s.date.startsWith(selectedMonth);
   });
 
   return (

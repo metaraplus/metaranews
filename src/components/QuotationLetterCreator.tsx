@@ -48,7 +48,11 @@ const formatRupiah = (num: number): string => {
   }).format(num);
 };
 
-export default function QuotationLetterCreator() {
+interface QuotationLetterCreatorProps {
+  selectedMonth?: string;
+}
+
+export default function QuotationLetterCreator({ selectedMonth = 'all' }: QuotationLetterCreatorProps) {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [selectedQuote, setSelectedQuote] = useState<Quotation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -408,7 +412,7 @@ export default function QuotationLetterCreator() {
         {/* Logo container */}
         <div className="flex flex-col items-center">
           {/* Logo image container */}
-          <div className="w-[62px] h-[62px] flex items-center justify-center relative overflow-hidden">
+          <div className="w-[84px] h-[84px] flex items-center justify-center relative overflow-hidden">
             <img 
               src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
               alt="Metaranews Logo" 
@@ -420,10 +424,9 @@ export default function QuotationLetterCreator() {
             />
           </div>
           {/* Metara wordmark */}
-          <div className="text-center mt-1.5 leading-none">
+          <div className="text-center mt-1 leading-none">
             <span className="font-extrabold text-[#E7312F] text-[18px] tracking-tighter block uppercase">Metara</span>
-            <span className="text-slate-800 font-black text-[7.5px] uppercase tracking-wider block -mt-0.5 whitespace-nowrap">Setara Bercerita</span>
-            <span className="text-[5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
+            <span className="text-[5.5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
           </div>
         </div>
       </div>
@@ -470,12 +473,15 @@ export default function QuotationLetterCreator() {
   // Filter list by recipient or reference query
   const filteredQuotations = quotations.filter(q => {
     const term = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       q.recipientCompany.toLowerCase().includes(term) ||
       q.recipientName.toLowerCase().includes(term) ||
       q.letterNumber.toLowerCase().includes(term) ||
       q.subject.toLowerCase().includes(term)
     );
+    if (!matchesSearch) return false;
+    if (selectedMonth === 'all') return true;
+    return q.date.startsWith(selectedMonth);
   });
 
   return (

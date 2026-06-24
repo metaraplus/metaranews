@@ -1295,7 +1295,7 @@ export default function App() {
                 </p>
               </div>
 
-              <QuotationLetterCreator />
+              <QuotationLetterCreator selectedMonth={selectedMonth} />
             </div>
           )}
 
@@ -1312,7 +1312,7 @@ export default function App() {
                 </p>
               </div>
 
-              <SpjCreator />
+              <SpjCreator selectedMonth={selectedMonth} />
             </div>
           )}
 
@@ -1346,7 +1346,7 @@ export default function App() {
                 </p>
               </div>
 
-              <PaymentTracker onNavigateToTab={(tab) => setActiveTab(tab)} />
+              <PaymentTracker onNavigateToTab={(tab) => setActiveTab(tab)} selectedMonth={selectedMonth} />
             </div>
           )}
 
