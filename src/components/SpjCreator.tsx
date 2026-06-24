@@ -90,6 +90,8 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
   // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
     async function loadSpjs() {
+      const requestedId = localStorage.getItem('metara_active_spj_id');
+      
       // 1. Instantly load from localStorage for speed
       const stored = localStorage.getItem('metara_spjs');
       let localList: Spj[] = [];
@@ -110,13 +112,10 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       // Pre-populate state immediately
       setSpjs(localList);
       
-      const requestedId = localStorage.getItem('metara_active_spj_id');
       if (requestedId) {
         const found = localList.find(s => s.id === requestedId);
         if (found) {
           setSelectedSpj(found);
-          // clear it after matching
-          localStorage.removeItem('metara_active_spj_id');
         } else {
           setSelectedSpj(localList[0] || null);
         }
@@ -174,12 +173,10 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         mergedList.sort((a, b) => (b.createdAt || b.id).localeCompare(a.createdAt || a.id));
         setSpjs(mergedList);
         
-        const postRequestedId = localStorage.getItem('metara_active_spj_id');
-        if (postRequestedId) {
-          const found = mergedList.find(s => s.id === postRequestedId);
+        if (requestedId) {
+          const found = mergedList.find(s => s.id === requestedId);
           if (found) {
             setSelectedSpj(found);
-            localStorage.removeItem('metara_active_spj_id');
           } else if (localList[0]) {
             const currentSelected = mergedList.find(s => s.id === localList[0].id);
             setSelectedSpj(currentSelected || mergedList[0] || null);
@@ -200,6 +197,10 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         localStorage.setItem('metara_spjs', JSON.stringify(mergedList));
       } catch (err) {
         console.warn("Using offline mode for SPJs:", err);
+      } finally {
+        if (requestedId) {
+          localStorage.removeItem('metara_active_spj_id');
+        }
       }
     }
     loadSpjs();

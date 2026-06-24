@@ -558,9 +558,6 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
                             {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                           </button>
                         </div>
-                        <div className="text-[10px] text-slate-400 line-clamp-1 truncate" title={e.subject}>
-                          Perihal: {e.subject}
-                        </div>
                       </td>
 
                       {/* 5. PENERIMA */}

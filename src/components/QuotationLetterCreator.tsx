@@ -107,6 +107,8 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
   // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
     async function loadQuotations() {
+      const requestedId = localStorage.getItem('metara_active_quotation_id');
+      
       // 1. Instantly load from localStorage so the UI is immediately populated and responsive
       const stored = localStorage.getItem('metara_quotations');
       let localList: Quotation[] = [];
@@ -127,13 +129,10 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
       // Pre-populate state immediately
       setQuotations(localList);
       
-      const requestedId = localStorage.getItem('metara_active_quotation_id');
       if (requestedId) {
         const found = localList.find(q => q.id === requestedId);
         if (found) {
           setSelectedQuote(found);
-          // clear it after matching
-          localStorage.removeItem('metara_active_quotation_id');
         } else {
           setSelectedQuote(localList[0] || null);
         }
@@ -193,12 +192,10 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
         setQuotations(mergedList);
         
         // Try to retain the current selection if it still exists
-        const postRequestedId = localStorage.getItem('metara_active_quotation_id');
-        if (postRequestedId) {
-          const found = mergedList.find(q => q.id === postRequestedId);
+        if (requestedId) {
+          const found = mergedList.find(q => q.id === requestedId);
           if (found) {
             setSelectedQuote(found);
-            localStorage.removeItem('metara_active_quotation_id');
           } else if (localList[0]) {
             const currentSelected = mergedList.find(q => q.id === localList[0].id);
             setSelectedQuote(currentSelected || mergedList[0] || null);
@@ -219,6 +216,10 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
         localStorage.setItem('metara_quotations', JSON.stringify(mergedList));
       } catch (err) {
         console.warn("Using offline mode as Firestore is unreachable during startup:", err);
+      } finally {
+        if (requestedId) {
+          localStorage.removeItem('metara_active_quotation_id');
+        }
       }
     }
     loadQuotations();
