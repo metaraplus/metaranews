@@ -81,6 +81,7 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
   const [marketingFee, setMarketingFee] = useState<number>(0);
   const [marketingName, setMarketingName] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const [receivedAmount, setReceivedAmount] = useState<number>(0);
 
   const fetchSpjs = async () => {
     try {
@@ -136,6 +137,7 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
     setMarketingFee(spj.marketingFee || 0);
     setMarketingName(spj.marketingName || '');
     setPaymentNotes(spj.paymentNotes || '');
+    setReceivedAmount(spj.receivedAmount !== undefined ? spj.receivedAmount : (spj.paymentStatus === 'Lunas' ? getSpjTotal(spj) : 0));
   };
 
   // Close editing modal
@@ -155,7 +157,8 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
         paymentStatus,
         marketingFee: Number(marketingFee) || 0,
         marketingName,
-        paymentNotes
+        paymentNotes,
+        receivedAmount: paymentStatus === 'Lunas' ? (Number(receivedAmount) || 0) : 0
       };
 
       // 1. Update list in state & local storage
@@ -251,7 +254,8 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
       const isPaid = s.paymentStatus === 'Lunas';
       if (isPaid) {
         paidCount++;
-        totalPaidAmount += amount;
+        const rAmount = s.receivedAmount !== undefined ? s.receivedAmount : amount;
+        totalPaidAmount += rAmount;
       } else {
         unpaidCount++;
         totalUnpaidAmount += amount;
@@ -284,16 +288,20 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
   // Export Payment Report to CSV
   const handleExportCSV = () => {
     const csvRows = [
-      ['No', 'Tanggal Terbit SPJ', 'Nomor SPJ/Invoice', 'Nama Instansi Penerima', 'Total Tagihan (IDR)', 'Status Pembayaran', 'Tanggal Lunas', 'Nama Marketing', 'Fee/Insentif Marketing (IDR)', 'Catatan']
+      ['No', 'Tanggal Terbit SPJ', 'Nomor SPJ/Invoice', 'Nama Instansi Penerima', 'Total Tagihan (IDR)', 'Dana yang Masuk (IDR)', 'Status Pembayaran', 'Tanggal Lunas', 'Nama Marketing', 'Fee/Insentif Marketing (IDR)', 'Catatan']
     ];
 
     sortedSpjs.forEach((s, index) => {
+      const amount = getSpjTotal(s);
+      const isPaid = s.paymentStatus === 'Lunas';
+      const rAmount = isPaid ? (s.receivedAmount !== undefined ? s.receivedAmount : amount) : 0;
       csvRows.push([
         String(index + 1),
         s.date,
         `"${s.invoiceNumber.replace(/"/g, '""')}"`,
         `"${s.recipientName.replace(/"/g, '""')}"`,
-        String(getSpjTotal(s)),
+        String(amount),
+        String(rAmount),
         s.paymentStatus || 'Belum Lunas',
         s.paymentDate || '-',
         s.marketingName || '-',
@@ -452,31 +460,22 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
           </div>
 
           {/* 2. Month Filter */}
-          {!selectedMonth || selectedMonth === 'all' ? (
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
-              <span className="text-slate-400 font-bold flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                Bulan Terbit:
-              </span>
-              <select
-                value={selectedYearMonth}
-                onChange={(e) => setSelectedYearMonth(e.target.value)}
-                className="font-extrabold bg-transparent border-0 p-0 text-slate-700 focus:ring-0 cursor-pointer text-xs"
-              >
-                <option value="Semua">Semua Bulan</option>
-                {yearMonthOptions.map(ym => (
-                  <option key={ym} value={ym}>{ym}</option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-sky-50 border border-sky-100 px-3 py-1.5 rounded-xl text-sky-700">
-              <Calendar className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
-              <span className="text-xs font-bold">
-                Bulan Dana Masuk: <strong className="font-extrabold underline decoration-sky-300 decoration-2 underline-offset-2">{selectedMonth}</strong>
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
+            <span className="text-slate-400 font-bold flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" />
+              Bulan Terbit:
+            </span>
+            <select
+              value={selectedYearMonth}
+              onChange={(e) => setSelectedYearMonth(e.target.value)}
+              className="font-extrabold bg-transparent border-0 p-0 text-slate-700 focus:ring-0 cursor-pointer text-xs"
+            >
+              <option value="Semua">Semua Bulan</option>
+              {yearMonthOptions.map(ym => (
+                <option key={ym} value={ym}>{ym}</option>
+              ))}
+            </select>
+          </div>
 
           {/* 3. Sorting Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl">
@@ -551,6 +550,7 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
                   <th className="py-3.5 px-4 w-12 text-center">No</th>
                   <th className="py-3.5 px-3 w-44">Nomor SPJ / Penerima</th>
                   <th className="py-3.5 px-3 text-right">Total Tagihan</th>
+                  <th className="py-3.5 px-3 text-right">Dana yang Masuk</th>
                   <th className="py-3.5 px-3 text-center">Status</th>
                   <th className="py-3.5 px-3">Tanggal Bayar</th>
                   <th className="py-3.5 px-3">Marketing &amp; Fee</th>
@@ -587,6 +587,15 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
                       {/* 3. TOTAL BILL */}
                       <td className="py-4 px-3 text-right font-mono font-black text-slate-900 whitespace-nowrap">
                         {formatRupiah(totalAmount)}
+                      </td>
+
+                      {/* 3.5. DANA YANG MASUK */}
+                      <td className="py-4 px-3 text-right font-mono font-black text-emerald-600 whitespace-nowrap">
+                        {status === 'Lunas' ? (
+                          formatRupiah(s.receivedAmount !== undefined ? s.receivedAmount : totalAmount)
+                        ) : (
+                          <span className="text-slate-400 font-normal italic">-</span>
+                        )}
                       </td>
 
                       {/* 4. STATUS BADGE */}
@@ -780,6 +789,9 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
                       if (!paymentDate) {
                         setPaymentDate(new Date().toISOString().split('T')[0]);
                       }
+                      if (!receivedAmount) {
+                        setReceivedAmount(getSpjTotal(editingSpj));
+                      }
                     }}
                     className={`p-2.5 rounded-xl border text-center font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                       paymentStatus === 'Lunas'
@@ -806,6 +818,31 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
                     onChange={(e) => setPaymentDate(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-sky-500 focus:border-sky-500 outline-none font-semibold text-slate-850"
                   />
+                </div>
+              )}
+
+              {/* Input 2.5: Jumlah Dana yang Masuk (Only if status is Lunas) */}
+              {paymentStatus === 'Lunas' && (
+                <div className="space-y-1 animate-in slide-in-from-top-1 duration-150">
+                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
+                    Jumlah Dana yang Masuk ke Rekening
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-slate-400 font-bold font-mono">Rp</span>
+                    <input
+                      type="number"
+                      placeholder="Contoh: 1500000"
+                      value={receivedAmount === 0 ? '' : receivedAmount}
+                      onChange={(e) => setReceivedAmount(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:ring-1 focus:ring-sky-500 focus:border-sky-500 outline-none font-mono text-slate-800 font-bold"
+                    />
+                  </div>
+                  {receivedAmount > 0 && (
+                    <p className="text-[10px] text-emerald-600 font-bold font-mono text-right pt-0.5">
+                      Formatted: {formatRupiah(receivedAmount)}
+                    </p>
+                  )}
                 </div>
               )}
 

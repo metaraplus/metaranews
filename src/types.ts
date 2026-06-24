@@ -94,4 +94,5 @@ export interface Spj {
   marketingFee?: number;
   marketingName?: string;
   paymentNotes?: string;
+  receivedAmount?: number;
 }
