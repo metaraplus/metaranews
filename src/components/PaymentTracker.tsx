@@ -42,14 +42,13 @@ const formatIndonesianDate = (dateStr: string): string => {
   return dateStr;
 };
 
-// Format currency as IDR
+// Format currency as Rupiah
 const formatRupiah = (num: number): string => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
+  const formatted = new Intl.NumberFormat('id-ID', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(num);
+  return `Rp ${formatted}`;
 };
 
 interface PaymentTrackerProps {

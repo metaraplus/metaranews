@@ -40,14 +40,13 @@ const formatIndonesianDate = (dateStr: string): string => {
   return dateStr;
 };
 
-// Format currency as IDR
+// Format currency as Rupiah
 const formatRupiah = (num: number): string => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
+  const formatted = new Intl.NumberFormat('id-ID', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
   }).format(num);
+  return `Rp ${formatted}`;
 };
 
 export interface AgendaEntry {
@@ -76,7 +75,7 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<'Semua' | 'Surat Penawaran' | 'SPJ/Invoice'>('Semua');
   const [selectedYearMonth, setSelectedYearMonth] = useState('Semua');
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'number-asc'>('date-desc');
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' | 'number-asc' | 'number-desc'>('date-desc');
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -237,6 +236,8 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
         return list.sort((a, b) => a.amount - b.amount);
       case 'number-asc':
         return list.sort((a, b) => a.letterNumber.localeCompare(b.letterNumber));
+      case 'number-desc':
+        return list.sort((a, b) => b.letterNumber.localeCompare(a.letterNumber));
       default:
         return list;
     }
@@ -302,7 +303,7 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
     <div className="space-y-6" id="letter-agenda-book-root">
       
       {/* 1. TOP STATS BENTO CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="agenda-kpi-panel">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" id="agenda-kpi-panel">
         
         {/* KPI 1: Total Surat */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs flex flex-row items-center justify-between hover:scale-[1.01] transition-transform">
@@ -355,24 +356,6 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
           </div>
           <div className="w-11 h-11 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0">
             <FileText className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* KPI 4: Total Nilai Nominal */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs flex flex-row items-center justify-between hover:scale-[1.01] transition-transform">
-          <div className="space-y-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              Akumulasi Nominal
-            </span>
-            <h2 className="text-lg font-black text-emerald-600 font-mono truncate max-w-[160px]" title={formatRupiah(stats.totalAmount)}>
-              {formatRupiah(stats.totalAmount)}
-            </h2>
-            <p className="text-[10px] text-slate-500">
-              Peluang Nilai Kerjasama
-            </p>
-          </div>
-          <div className="w-11 h-11 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-            <TrendingUp className="w-5 h-5" />
           </div>
         </div>
 
@@ -471,6 +454,7 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
               <option value="amount-desc">Anggaran Terbesar</option>
               <option value="amount-asc">Anggaran Terkecil</option>
               <option value="number-asc">Nomor Surat (A-Z)</option>
+              <option value="number-desc">Nomor Surat (Z-A)</option>
             </select>
           </div>
 
@@ -561,8 +545,8 @@ export default function LetterAgendaBook({ onNavigateToTab }: LetterAgendaBookPr
                       {/* 4. NOMOR SURAT */}
                       <td className="py-3.5 px-3">
                         <div className="flex items-center gap-1.5 max-w-full">
-                          <span className="font-mono font-bold text-slate-900 select-all truncate" title={e.letterNumber}>
-                            {e.letterNumber}
+                          <span className="font-mono font-bold text-slate-900 select-all truncate text-xs" title={e.letterNumber}>
+                            {e.letterNumber.length > 60 ? e.letterNumber.substring(0, 60) + '...' : e.letterNumber}
                           </span>
                           <button
                             onClick={() => handleCopy(e.letterNumber, e.id)}
