@@ -21,7 +21,7 @@ import QuotationLetterCreator from './components/QuotationLetterCreator';
 import SpjCreator from './components/SpjCreator';
 import LetterAgendaBook from './components/LetterAgendaBook';
 import PaymentTracker from './components/PaymentTracker';
-import { db, collection, getDocs, setDoc, doc, deleteDoc, updateDoc } from './firebase';
+import { db, collection, getDocs, getDoc, setDoc, doc, deleteDoc, updateDoc } from './firebase';
 import { 
   LayoutDashboard, 
   Newspaper, 
@@ -118,12 +118,13 @@ export default function App() {
       try {
         setIsLoading(true);
         
-        // Fetch collections in parallel to prevent network waterfall delays
-        const [jSnap, cSnap, aSnap, pSnap] = await Promise.all([
+        // Fetch collections and seeding state in parallel to prevent network waterfall delays
+        const [jSnap, cSnap, aSnap, pSnap, seedingSnap] = await Promise.all([
           getDocs(collection(db, 'journalists')),
           getDocs(collection(db, 'categories')),
           getDocs(collection(db, 'articles')),
-          getDocs(collection(db, 'personnels'))
+          getDocs(collection(db, 'personnels')),
+          getDoc(doc(db, 'system_config', 'seeding')).catch(() => null)
         ]);
 
         if (fallbackTriggered) return;
@@ -133,42 +134,55 @@ export default function App() {
         let aList = aSnap.docs.map(docSnap => docSnap.data() as Article);
         let pList = pSnap.docs.map(docSnap => docSnap.data() as Personnel);
 
-        // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE ---
-        if (jList.length === 0) {
-          console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
-          await Promise.all(
-            INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
-          );
-          jList = INITIAL_JOURNALISTS;
-        }
+        const isAlreadySeeded = seedingSnap && seedingSnap.exists() && seedingSnap.data()?.seeded === true;
 
-        if (cList.length === 0) {
-          console.log("Seeding INITIAL_CATEGORIES to Firebase...");
-          await Promise.all(
-            INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
-          );
-          cList = INITIAL_CATEGORIES;
-        }
+        // --- SEED SECTIONS INDEPENDENTLY IF EMPTY IN FIRESTORE AND NOT YET SEEDED ---
+        if (!isAlreadySeeded) {
+          let shouldSetSeededFlag = false;
 
-        if (aList.length === 0) {
-          console.log("Seeding INITIAL_ARTICLES to Firebase...");
-          await Promise.all(
-            INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
-          );
-          aList = INITIAL_ARTICLES;
-        }
+          if (jList.length === 0) {
+            console.log("Seeding INITIAL_JOURNALISTS to Firebase...");
+            await Promise.all(
+              INITIAL_JOURNALISTS.map(j => setDoc(doc(db, 'journalists', j.id), j))
+            );
+            jList = INITIAL_JOURNALISTS;
+            shouldSetSeededFlag = true;
+          }
 
-        if (pList.length === 0) {
-          console.log("Seeding default personnels to Firebase...");
-          const defaultPersonnels: Personnel[] = [
-            { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
-            { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
-            { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
-          ];
-          await Promise.all(
-            defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
-          );
-          pList = defaultPersonnels;
+          if (cList.length === 0) {
+            console.log("Seeding INITIAL_CATEGORIES to Firebase...");
+            await Promise.all(
+              INITIAL_CATEGORIES.map(c => setDoc(doc(db, 'categories', c.id), c))
+            );
+            cList = INITIAL_CATEGORIES;
+            shouldSetSeededFlag = true;
+          }
+
+          if (aList.length === 0) {
+            console.log("Seeding INITIAL_ARTICLES to Firebase...");
+            await Promise.all(
+              INITIAL_ARTICLES.map(a => setDoc(doc(db, 'articles', a.id), a))
+            );
+            aList = INITIAL_ARTICLES;
+            shouldSetSeededFlag = true;
+          }
+
+          if (pList.length === 0) {
+            console.log("Seeding default personnels to Firebase...");
+            const defaultPersonnels: Personnel[] = [
+              { id: 'p1', username: 'admin', password: 'admin123', role: 'Admin', fullName: 'Admin Redaksi', journalistId: 'j9' },
+              { id: 'p2', username: 'manager', password: 'manager123', role: 'Manager', fullName: 'Siti Aminah', journalistId: 'j2' },
+              { id: 'p3', username: 'staff', password: 'staff123', role: 'Staff', fullName: 'Budi Santoso', journalistId: 'j1' }
+            ];
+            await Promise.all(
+              defaultPersonnels.map(p => setDoc(doc(db, 'personnels', p.id), p))
+            );
+            pList = defaultPersonnels;
+            shouldSetSeededFlag = true;
+          }
+
+          // Always write the seeded flag so we never re-seed even if users delete everything later
+          await setDoc(doc(db, 'system_config', 'seeding'), { seeded: true }).catch(() => null);
         }
 
         if (active && !fallbackTriggered) {

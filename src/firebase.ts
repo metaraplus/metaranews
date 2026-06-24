@@ -9,6 +9,7 @@ import {
   collection, 
   doc, 
   getDocs, 
+  getDoc,
   setDoc, 
   deleteDoc, 
   updateDoc 
@@ -33,4 +34,4 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 }, "ai-studio-69c184d0-5b30-47d2-b410-4a23184e9310");
 
-export { collection, doc, getDocs, setDoc, deleteDoc, updateDoc };
+export { collection, doc, getDocs, getDoc, setDoc, deleteDoc, updateDoc };
