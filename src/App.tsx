@@ -894,7 +894,7 @@ export default function App() {
                 <span className="text-xs font-bold text-sky-600 uppercase tracking-widest leading-none">Dashboard Redaksi</span>
               </div>
               <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1">
-                Laporan Kinerja Jurnalis
+                Laporan Kinerja METARANEWS.CO
               </h1>
               <p className="text-xs text-slate-500 font-medium">
                 Sistem real-time terintegrasi untuk melacak liputan, karya rilis, dokumentasi, dan grafik produktivitas.
@@ -1162,9 +1162,6 @@ export default function App() {
                 selectedMonth={selectedMonth} 
               />
 
-              {/* FINANCIAL COMPARISON (DANA MASUK VS PENGELUARAN) */}
-              <FinancialPerformanceChart selectedMonth={selectedMonth} />
-
               {/* TWO COLUMN SUMMARY: HIGHEST CONTRIBUTORS & RUBRIC BREAKDOWN */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
@@ -1233,6 +1230,9 @@ export default function App() {
                 </div>
 
               </div>
+
+              {/* FINANCIAL COMPARISON (DANA MASUK VS PENGELUARAN) */}
+              <FinancialPerformanceChart selectedMonth={selectedMonth} />
 
             </div>
           )}

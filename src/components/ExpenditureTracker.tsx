@@ -271,7 +271,7 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
     <div className="space-y-6 font-sans">
       
       {/* HEADER SECTION WITH STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs flex flex-row items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -286,30 +286,6 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
           </div>
           <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
             <TrendingDown className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs flex flex-row items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-              Transaksi Terbanyak
-            </span>
-            <h2 className="text-lg font-bold text-slate-800">
-              {expenditures.length > 0 ? (
-                (() => {
-                  const counts: Record<string, number> = {};
-                  expenditures.forEach(e => { counts[e.category] = (counts[e.category] || 0) + 1; });
-                  const sortedCats = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-                  return sortedCats[0] ? sortedCats[0][0] : '-';
-                })()
-              ) : '-'}
-            </h2>
-            <p className="text-[10px] text-slate-500">
-              Kategori pengeluaran paling sering dibuat
-            </p>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
-            <FileText className="w-5 h-5" />
           </div>
         </div>
 
