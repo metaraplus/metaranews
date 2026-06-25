@@ -205,8 +205,8 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
       ) : (
         <div className="space-y-6">
           
-          {/* THREE COLUMN SUMMARY CARD */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* TWO COLUMN SUMMARY CARD */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* 1. Dana Masuk Card */}
             <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/20 space-y-1 relative overflow-hidden">
@@ -241,34 +241,6 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
               </h4>
               <p className="text-[10px] text-slate-500 font-semibold">
                 Dari {finances.expCount} transaksi pengeluaran terinput
-              </p>
-            </div>
-
-            {/* 3. Saldo Bersih Card */}
-            <div className={`p-4 rounded-xl border space-y-1 ${
-              finances.netCashFlow >= 0 
-                ? 'border-sky-100 bg-sky-50/20' 
-                : 'border-amber-100 bg-amber-50/20'
-            }`}>
-              <div className="flex justify-between items-start">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Sisa Saldo (Surplus/Defisit)
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  finances.netCashFlow >= 0 
-                    ? 'bg-sky-100 text-sky-700' 
-                    : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {finances.netCashFlow >= 0 ? 'Surplus' : 'Defisit'}
-                </span>
-              </div>
-              <h4 className={`text-xl font-black font-mono ${
-                finances.netCashFlow >= 0 ? 'text-sky-700' : 'text-amber-700'
-              }`}>
-                {formatRupiah(finances.netCashFlow)}
-              </h4>
-              <p className="text-[10px] text-slate-500 font-semibold">
-                Sisa dana bersih operasional redaksi
               </p>
             </div>
 

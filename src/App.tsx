@@ -948,14 +948,14 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           
           {/* Elegant tab pill buttons */}
-          <div className="flex border-b border-slate-200">
-            <nav className="flex gap-6 -mb-px" aria-label="Tabs">
+          <div className="border-b border-slate-200 pb-3 mb-2 no-print-element">
+            <nav className="flex flex-wrap gap-2" aria-label="Tabs">
               <button
                 onClick={() => setActiveTab('laporan')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'laporan'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-laporan-btn"
               >
@@ -964,10 +964,10 @@ export default function App() {
               </button>
               <button
                 onClick={() => setActiveTab('berita')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'berita'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-berita-btn"
               >
@@ -977,10 +977,10 @@ export default function App() {
               
               <button
                 onClick={() => setActiveTab('surat')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'surat'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-surat-btn"
               >
@@ -990,10 +990,10 @@ export default function App() {
               
               <button
                 onClick={() => setActiveTab('spj')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'spj'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-spj-btn"
               >
@@ -1003,10 +1003,10 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab('agenda')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'agenda'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-agenda-btn"
               >
@@ -1016,10 +1016,10 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab('pembayaran')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'pembayaran'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-pembayaran-btn"
               >
@@ -1029,10 +1029,10 @@ export default function App() {
 
               <button
                 onClick={() => setActiveTab('pengeluaran')}
-                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                   activeTab === 'pengeluaran'
-                    ? 'border-sky-600 text-sky-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                    ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                    : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                 }`}
                 id="tab-pengeluaran-btn"
               >
@@ -1044,10 +1044,10 @@ export default function App() {
               {currentUser.role !== 'Staff' && (
                 <button
                   onClick={() => setActiveTab('sistem')}
-                  className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                     activeTab === 'sistem'
-                      ? 'border-sky-600 text-sky-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                      ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                      : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                   }`}
                   id="tab-sistem-btn"
                 >
@@ -1060,10 +1060,10 @@ export default function App() {
               {currentUser.role === 'Admin' && (
                 <button
                   onClick={() => setActiveTab('personil')}
-                  className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all duration-200 cursor-pointer ${
                     activeTab === 'personil'
-                      ? 'border-sky-600 text-sky-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-805 hover:border-slate-300'
+                      ? 'bg-[#E7312F] text-white shadow-md shadow-[#E7312F]/20'
+                      : 'text-slate-600 hover:bg-[#E7312F] hover:text-white'
                   }`}
                   id="tab-personil-btn"
                 >
