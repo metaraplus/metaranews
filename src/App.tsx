@@ -21,6 +21,8 @@ import QuotationLetterCreator from './components/QuotationLetterCreator';
 import SpjCreator from './components/SpjCreator';
 import LetterAgendaBook from './components/LetterAgendaBook';
 import PaymentTracker from './components/PaymentTracker';
+import ExpenditureTracker from './components/ExpenditureTracker';
+import FinancialPerformanceChart from './components/FinancialPerformanceChart';
 import { db, collection, getDocs, getDoc, setDoc, doc, deleteDoc, updateDoc } from './firebase';
 import { 
   LayoutDashboard, 
@@ -30,6 +32,7 @@ import {
   Plus, 
   Calendar, 
   TrendingUp, 
+  TrendingDown,
   FileText, 
   CheckCircle, 
   Layers, 
@@ -68,7 +71,7 @@ export default function App() {
 
   // --- Active Tab State ---
   const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
-  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda' | 'pembayaran'>('laporan');
+  const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda' | 'pembayaran' | 'pengeluaran'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
 
@@ -1023,6 +1026,19 @@ export default function App() {
                 <DollarSign className="w-4 h-4" />
                 Pembayaran
               </button>
+
+              <button
+                onClick={() => setActiveTab('pengeluaran')}
+                className={`py-3.5 px-1 border-b-2 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === 'pengeluaran'
+                    ? 'border-sky-600 text-sky-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'
+                }`}
+                id="tab-pengeluaran-btn"
+              >
+                <TrendingDown className="w-4 h-4" />
+                Pengeluaran
+              </button>
               
               {/* Only Admin and Manager can see Wartawan & Rubrics settings */}
               {currentUser.role !== 'Staff' && (
@@ -1145,6 +1161,9 @@ export default function App() {
                 journalists={journalists} 
                 selectedMonth={selectedMonth} 
               />
+
+              {/* FINANCIAL COMPARISON (DANA MASUK VS PENGELUARAN) */}
+              <FinancialPerformanceChart selectedMonth={selectedMonth} />
 
               {/* TWO COLUMN SUMMARY: HIGHEST CONTRIBUTORS & RUBRIC BREAKDOWN */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1361,6 +1380,23 @@ export default function App() {
               </div>
 
               <PaymentTracker onNavigateToTab={(tab) => setActiveTab(tab)} selectedMonth={selectedMonth} />
+            </div>
+          )}
+
+          {/* --- TAB CONTENT 9: PENGELUARAN REDAKSI --- */}
+          {activeTab === 'pengeluaran' && (
+            <div className="space-y-6 animate-in fade-in duration-200" id="pengeluaran-tab-view">
+              <div>
+                <h3 className="font-bold text-slate-900 text-md flex items-center gap-2 no-print-element">
+                  <TrendingDown className="w-5 h-5 text-rose-600" />
+                  Pencatatan Pengeluaran Redaksi
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5 no-print-element">
+                  Kelola dan rekapitulasi seluruh pengeluaran bulanan redaksi, seperti pembayaran gaji/insentif kru jurnalis, sewa, operasional kantor, operasional peliputan, perlengkapan, dan pengeluaran tak terduga lainnya.
+                </p>
+              </div>
+
+              <ExpenditureTracker selectedMonth={selectedMonth} />
             </div>
           )}
 

@@ -96,3 +96,14 @@ export interface Spj {
   paymentNotes?: string;
   receivedAmount?: number;
 }
+
+export interface Expenditure {
+  id: string;
+  date: string; // Format: YYYY-MM-DD
+  category: string; // e.g., 'Gaji/Insentif', 'Operasional Kantor', 'Sewa', 'Perjalanan Dinas', 'Perlengkapan', 'Lain-lain'
+  amount: number;
+  description: string;
+  notes?: string;
+  createdAt?: string;
+}
+
