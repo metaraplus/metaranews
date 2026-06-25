@@ -146,6 +146,9 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
 
     const totalPengeluaran = filteredExp.reduce((sum, e) => sum + e.amount, 0);
 
+    const totalMarketingFee = paidSpjs.reduce((sum, s) => sum + (s.marketingFee || 0), 0);
+    const marketingSpjsCount = paidSpjs.filter(s => (s.marketingFee || 0) > 0).length;
+
     // Net cash flow
     const netCashFlow = totalDanaMasuk - totalPengeluaran;
 
@@ -164,6 +167,8 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
     return {
       totalDanaMasuk,
       totalPengeluaran,
+      totalMarketingFee,
+      marketingSpjsCount,
       netCashFlow,
       categoryBreakdown,
       paidSpjsCount: paidSpjs.length,
@@ -172,11 +177,13 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
   }, [spjs, expenditures, selectedMonth]);
 
   // Max value for comparative visual chart height scaling
-  const maxFinanceValue = Math.max(finances.totalDanaMasuk, finances.totalPengeluaran, 1);
-  const percentDanaMasuk = finances.totalDanaMasuk > 0 ? 100 : 0;
-  const percentPengeluaran = finances.totalPengeluaran > 0 ? Math.round((finances.totalPengeluaran / maxFinanceValue) * 100) : 0;
+  const totalOutgoing = finances.totalPengeluaran + finances.totalMarketingFee;
+  const maxFinanceValue = Math.max(finances.totalDanaMasuk, totalOutgoing, 1);
   const normalizedDanaMasukHeight = Math.max(Math.round((finances.totalDanaMasuk / maxFinanceValue) * 100), 5);
-  const normalizedPengeluaranHeight = Math.max(Math.round((finances.totalPengeluaran / maxFinanceValue) * 100), 5);
+  const normalizedOutgoingHeight = Math.max(Math.round((totalOutgoing / maxFinanceValue) * 100), 5);
+
+  const pengeluaranSharePercent = totalOutgoing > 0 ? (finances.totalPengeluaran / totalOutgoing) * 100 : 0;
+  const marketingSharePercent = totalOutgoing > 0 ? (finances.totalMarketingFee / totalOutgoing) * 100 : 0;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-150 p-6 shadow-2xs space-y-6" id="financial-performance-card">
@@ -205,8 +212,8 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
       ) : (
         <div className="space-y-6">
           
-          {/* TWO COLUMN SUMMARY CARD */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* THREE COLUMN SUMMARY CARD */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             
             {/* 1. Dana Masuk Card */}
             <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/20 space-y-1 relative overflow-hidden">
@@ -244,6 +251,24 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
               </p>
             </div>
 
+            {/* 3. Fee/Insentif Marketing Card */}
+            <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/20 space-y-1 relative overflow-hidden">
+              <div className="flex justify-between items-start">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Fee/Insentif Marketing
+                </span>
+                <span className="p-1 rounded-md bg-amber-50 text-amber-600">
+                  <Percent className="w-4 h-4" />
+                </span>
+              </div>
+              <h4 className="text-xl font-black text-amber-700 font-mono">
+                {formatRupiah(finances.totalMarketingFee)}
+              </h4>
+              <p className="text-[10px] text-slate-500 font-semibold">
+                Dari {finances.marketingSpjsCount} SPJ/Invoice bermarketing
+              </p>
+            </div>
+
           </div>
 
           {/* TWO COLUMN DETAILS SECTION */}
@@ -257,51 +282,107 @@ export default function FinancialPerformanceChart({ selectedMonth }: FinancialPe
                   Visualisasi Perbandingan Kas
                 </h4>
                 <p className="text-[10px] text-slate-450 font-medium">
-                  Rasio perbandingan antara total uang yang masuk dengan beban pengeluaran.
+                  Rasio perbandingan antara total uang masuk dengan seluruh pengeluaran (Beban & Fee Marketing).
                 </p>
               </div>
 
-              {finances.totalDanaMasuk === 0 && finances.totalPengeluaran === 0 ? (
+              {finances.totalDanaMasuk === 0 && totalOutgoing === 0 ? (
                 <div className="text-center py-10 text-[11px] text-slate-400 font-semibold">
                   Tidak ada data transaksi keuangan untuk bulan ini.
                 </div>
               ) : (
-                <div className="flex items-end justify-center gap-16 h-36 pt-4 pb-2 border-b border-slate-200">
+                <div className="flex items-end justify-center gap-12 h-40 pt-4 pb-2 border-b border-slate-200">
                   
                   {/* Dana Masuk Bar */}
-                  <div className="flex flex-col items-center gap-2 group w-20">
-                    <div className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  <div className="flex flex-col items-center justify-end h-full w-24 group relative">
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 bg-slate-900 text-white rounded-lg px-2.5 py-1.5 shadow-xl text-[10px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">
+                      <div className="font-bold border-b border-slate-700 pb-0.5 mb-1">Total Dana Masuk</div>
+                      <div className="font-mono text-emerald-400 font-bold">{formatRupiah(finances.totalDanaMasuk)}</div>
+                    </div>
+
+                    <div className="text-[9px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md mb-1.5">
                       {formatRupiah(finances.totalDanaMasuk)}
                     </div>
-                    <div 
-                      className="w-12 bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg shadow-sm transition-all duration-500 ease-out hover:brightness-105"
-                      style={{ height: `${normalizedDanaMasukHeight}%` }}
-                    />
-                    <span className="text-[10px] font-extrabold text-slate-500">Dana Masuk</span>
+                    <div className="h-24 w-12 bg-slate-100/80 rounded-t-lg overflow-hidden flex items-end">
+                      <div 
+                        className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t-lg shadow-xs transition-all duration-500 ease-out hover:brightness-105"
+                        style={{ height: `${normalizedDanaMasukHeight}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-extrabold text-slate-500 mt-2">Dana Masuk</span>
                   </div>
 
-                  {/* Pengeluaran Bar */}
-                  <div className="flex flex-col items-center gap-2 group w-20">
-                    <div className="text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      {formatRupiah(finances.totalPengeluaran)}
+                  {/* Pengeluaran & Fee Bar (Stacked) */}
+                  <div className="flex flex-col items-center justify-end h-full w-24 group relative">
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 bg-slate-900 text-white rounded-lg p-2.5 shadow-xl text-[10px] space-y-1.5 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">
+                      <div className="font-bold border-b border-slate-700 pb-0.5">Rincian Pengeluaran</div>
+                      <div className="flex items-center gap-2 justify-between">
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <span className="w-2 h-2 rounded-full bg-rose-500"></span> Beban:
+                        </span>
+                        <span className="font-mono font-bold text-rose-300">{formatRupiah(finances.totalPengeluaran)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 justify-between">
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <span className="w-2 h-2 rounded-full bg-amber-500"></span> Fee Marketing:
+                        </span>
+                        <span className="font-mono font-bold text-amber-300">{formatRupiah(finances.totalMarketingFee)}</span>
+                      </div>
+                      <div className="border-t border-slate-700 pt-1 mt-1 flex items-center gap-2 justify-between font-extrabold">
+                        <span>Total Keluar:</span>
+                        <span className="font-mono text-white">{formatRupiah(totalOutgoing)}</span>
+                      </div>
                     </div>
-                    <div 
-                      className="w-12 bg-gradient-to-t from-rose-500 to-rose-400 rounded-t-lg shadow-sm transition-all duration-500 ease-out hover:brightness-105"
-                      style={{ height: `${normalizedPengeluaranHeight}%` }}
-                    />
-                    <span className="text-[10px] font-extrabold text-slate-500">Pengeluaran</span>
+
+                    <div className="text-[9px] font-black text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md mb-1.5">
+                      {formatRupiah(totalOutgoing)}
+                    </div>
+                    <div className="h-24 w-12 bg-slate-100/80 rounded-t-lg overflow-hidden flex items-end">
+                      <div 
+                        className="w-full flex flex-col justify-end overflow-hidden rounded-t-lg"
+                        style={{ height: `${normalizedOutgoingHeight}%` }}
+                      >
+                        {/* Fee Marketing (Top Segment) */}
+                        {finances.totalMarketingFee > 0 && (
+                          <div 
+                            className="w-full bg-gradient-to-t from-amber-500 to-amber-400 transition-all duration-500 ease-out hover:brightness-105"
+                            style={{ height: `${marketingSharePercent}%` }}
+                          />
+                        )}
+                        {/* Beban Pengeluaran (Bottom Segment) */}
+                        {finances.totalPengeluaran > 0 && (
+                          <div 
+                            className="w-full bg-gradient-to-t from-rose-500 to-rose-400 transition-all duration-500 ease-out hover:brightness-105"
+                            style={{ height: `${pengeluaranSharePercent}%` }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-extrabold text-slate-500 mt-2">Pengeluaran</span>
                   </div>
 
                 </div>
               )}
 
-              <div className="text-[10px] text-slate-400 font-semibold flex items-center justify-between pt-3">
-                <span>Rasio Beban Pengeluaran:</span>
-                <span className="font-mono text-slate-650">
-                  {finances.totalDanaMasuk > 0 
-                    ? Math.round((finances.totalPengeluaran / finances.totalDanaMasuk) * 100) 
-                    : finances.totalPengeluaran > 0 ? 100 : 0}%
-                </span>
+              <div className="text-[10px] text-slate-450 font-bold flex flex-col gap-1.5 pt-3">
+                <div className="flex items-center gap-3 justify-center text-[9px]">
+                  <span className="flex items-center gap-1 text-slate-500">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span> Beban
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-500">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span> Fee Marketing
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2 font-semibold text-slate-400">
+                  <span>Rasio Beban Pengeluaran:</span>
+                  <span className="font-mono text-slate-600">
+                    {finances.totalDanaMasuk > 0 
+                      ? Math.round((totalOutgoing / finances.totalDanaMasuk) * 100) 
+                      : totalOutgoing > 0 ? 100 : 0}%
+                  </span>
+                </div>
               </div>
             </div>
 
