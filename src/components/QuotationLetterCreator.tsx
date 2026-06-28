@@ -18,6 +18,39 @@ import {
 import { Quotation, QuotationItem } from '../types';
 import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
 
+// High-fidelity inline vector SVG Logo for METARANEWS to bypass Google Drive CORS restrictions
+const MetaraLogoSvg = ({ className = "w-full h-full" }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="logoRedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#E7312F" />
+        <stop offset="100%" stopColor="#B51B1A" />
+      </linearGradient>
+    </defs>
+    {/* Clean circular gradient brand base */}
+    <circle cx="50" cy="50" r="46" fill="url(#logoRedGrad)" />
+    {/* Stylized geometric corporate 'M' resembling transmission waves/bars */}
+    <path 
+      d="M28 68 V38 L50 56 L72 38 V68" 
+      stroke="white" 
+      strokeWidth="10" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+    {/* Pulsing focal wave/dot */}
+    <circle cx="50" cy="27" r="6" fill="white" />
+    {/* Radiating micro-waves at top */}
+    <path 
+      d="M36 22 A18 18 0 0 1 64 22" 
+      stroke="white" 
+      strokeWidth="3.5" 
+      strokeLinecap="round" 
+      fill="none" 
+      opacity="0.8"
+    />
+  </svg>
+);
+
 // Helper to format date in Indonesian long style: "21 Juni 2026"
 const formatIndonesianDate = (dateStr: string): string => {
   if (!dateStr) return '';
@@ -58,6 +91,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [showSignatureStamp, setShowSignatureStamp] = useState(true);
 
   // Sample Preset to load if empty or requested
   const dummyQuotationPreset: Quotation = {
@@ -392,43 +426,39 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
   };
 
   const renderKopSurat = () => (
-    <div className="flex justify-between items-start border-b-2 border-[#E7312F] pb-4 relative z-10 w-full">
-      {/* Top Left: METARA LOGO FROM GOOGLE DRIVE */}
-      <div className="flex items-start gap-4">
-        {/* Logo container */}
-        <div className="flex flex-col items-center">
-          {/* Logo image container */}
-          <div className="w-[84px] h-[84px] flex items-center justify-center relative overflow-hidden">
-            <img 
-              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
-              alt="Metaranews Logo" 
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-              onError={(e) => {
-                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
-              }}
-            />
-          </div>
-          {/* Metara wordmark */}
-          <div className="text-center mt-1 leading-none">
-            <span className="font-extrabold text-[#E7312F] text-[18px] tracking-tighter block uppercase">Metara</span>
-            <span className="text-[5.5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
-          </div>
+    <div className="flex justify-between items-center border-b-2 border-[#E7312F] pb-4 relative z-10 w-full font-montserrat">
+      {/* Top Left: METARA LOGO IMAGE */}
+      <div className="flex items-center">
+        <div className="w-[145px] h-[90px] flex items-center justify-start shrink-0">
+          <img 
+            src="https://lh3.googleusercontent.com/d/1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
+            alt="Metara Logo" 
+            className="w-full h-full object-contain object-left pointer-events-none select-none"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu";
+            }}
+          />
         </div>
       </div>
+      
       {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA and contact head */}
-      <div className="text-right flex-1 pl-4">
-        <h2 className="text-[#E7312F] font-black text-[20px] leading-tight uppercase font-sans tracking-tight">
+      <div className="text-right flex-1 pr-6">
+        <h2 className="text-[#E7312F] font-extrabold text-[19px] leading-tight uppercase tracking-tight font-montserrat">
           PT. PORTAL DIGITAL MEDIA NUSANTARA
         </h2>
-        <div className="text-slate-650 text-[10px] space-y-0.5 mt-2 font-medium">
-          <p className="leading-tight text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
-          <p className="leading-tight text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
-          <p className="leading-tight text-[#E7312F] font-bold font-sans">Telp. 0354-4545845 - +62 811-3500-466</p>
+        <div className="text-slate-800 text-[10.5px] font-semibold mt-1 space-y-0.5 tracking-tight leading-snug font-montserrat">
+          <p>Jl. Raya Kediri - Pare No. 30</p>
+          <p>Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
+          <p className="font-extrabold text-black">
+            Telp. <span className="text-slate-800 font-bold">0354-4545845</span> - <span className="text-slate-800 font-bold">+62 811-3500-466</span>
+          </p>
         </div>
       </div>
-      {/* Top-Right Curve corner box block matching image */}
-      <div className="absolute top-[-18mm] right-[-18mm] w-[50px] h-[55px] bg-[#E7312F] rounded-bl-3xl"></div>
+
+      {/* Decorative vertical red block on the right edge */}
+      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
     </div>
   );
 
@@ -894,6 +924,20 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
 
               <div className="space-y-3.5 bg-slate-50/40 p-4 border border-slate-100 rounded-xl">
                 <h5 className="text-[10.5px] font-extrabold uppercase text-slate-400 tracking-wider block">Otorisasi Penandatangan</h5>
+                
+                <div className="flex items-center gap-2 py-1 bg-white px-2.5 rounded-lg border border-slate-200/60 shadow-2xs">
+                  <input
+                    type="checkbox"
+                    id="showSignStampQuote"
+                    checked={showSignatureStamp}
+                    onChange={(e) => setShowSignatureStamp(e.target.checked)}
+                    className="rounded border-slate-300 focus:ring-[#CC0000] text-[#CC0000] cursor-pointer"
+                  />
+                  <label htmlFor="showSignStampQuote" className="font-bold text-slate-600 text-[10px] cursor-pointer select-none">
+                    Sertakan Tanda Tangan & Stempel
+                  </label>
+                </div>
+
                 <div className="space-y-2">
                   <div>
                     <label className="text-[9px] font-bold text-slate-500 block mb-0.5">Nama Pejabat</label>
@@ -1101,7 +1145,20 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                                 <p className="font-bold text-slate-700 block leading-none">PT. Portal Digital Media Nusantara</p>
                                 
                                 {/* Reserved space for manual signature and actual physical wet stamp */}
-                                <div className="h-20 w-44 mx-auto relative select-none shrink-0" />
+                                <div className="h-20 w-44 mx-auto relative flex items-center justify-center select-none shrink-0 overflow-visible">
+                                  {showSignatureStamp && (
+                                    <img 
+                                      src="https://lh3.googleusercontent.com/d/1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf" 
+                                      alt="Tanda Tangan & Pengesahan" 
+                                      className="absolute h-[120px] max-w-none object-contain pointer-events-none select-none mix-blend-multiply z-30 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                                      referrerPolicy="no-referrer"
+                                      crossOrigin="anonymous"
+                                      onError={(e) => {
+                                        e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf";
+                                      }}
+                                    />
+                                  )}
+                                </div>
 
                                 {/* Line Name and title */}
                                 <div className="space-y-0.5">

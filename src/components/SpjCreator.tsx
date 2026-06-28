@@ -487,36 +487,39 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
   };
 
   const renderKopSurat = () => (
-    <div className="flex justify-between items-start border-b border-[#E7312F] pb-3 relative z-10 w-full text-left">
-      {/* Top Left: METARA LOGO */}
-      <div className="flex items-start gap-4">
-        <div className="flex flex-col items-center shrink-0">
-          {/* Real Logo Image */}
-          <div className="w-[74px] h-[74px] flex items-center justify-center relative overflow-hidden">
-            <MetaraLogoSvg className="w-full h-full object-contain" />
-          </div>
-          {/* Metara text */}
-          <div className="text-center mt-1 leading-none">
-            <span className="font-extrabold text-[#E7312F] text-[15px] tracking-tighter block uppercase">Metara</span>
-            <span className="text-[4.5px] text-slate-400 tracking-tight block font-medium">a part of Media Nusantara Network</span>
-          </div>
+    <div className="flex justify-between items-center border-b border-[#E7312F] pb-3 relative z-10 w-full text-left font-montserrat">
+      {/* Top Left: METARA LOGO IMAGE */}
+      <div className="flex items-center">
+        <div className="w-[145px] h-[90px] flex items-center justify-start shrink-0">
+          <img 
+            src="https://lh3.googleusercontent.com/d/1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
+            alt="Metara Logo" 
+            className="w-full h-full object-contain object-left pointer-events-none select-none"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={(e) => {
+              e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu";
+            }}
+          />
         </div>
       </div>
 
       {/* Top Right: PT PORTAL DIGITAL MEDIA NUSANTARA */}
-      <div className="text-right flex-1 pl-4">
-        <h2 className="text-[#E7312F] font-black text-[16px] leading-tight uppercase font-sans tracking-tight">
+      <div className="text-right flex-1 pr-6">
+        <h2 className="text-[#E7312F] font-extrabold text-[19px] leading-tight uppercase tracking-tight font-montserrat">
           PT. PORTAL DIGITAL MEDIA NUSANTARA
         </h2>
-        <div className="text-slate-650 text-[8.5px] space-y-0.5 mt-1.5 font-medium leading-normal">
-          <p className="text-slate-600">Jl. Raya Kediri - Pare No. 30</p>
-          <p className="text-slate-600">Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
-          <p className="text-[#E7312F] font-bold">Telp. 0354-4545845 - +62 811-3500-466</p>
+        <div className="text-slate-800 text-[10.5px] font-semibold mt-1 space-y-0.5 tracking-tight leading-snug font-montserrat">
+          <p>Jl. Raya Kediri - Pare No. 30</p>
+          <p>Dsn. Ngrancangan Ds. Wonojoyo Kec. Gurah Kab. Kediri</p>
+          <p className="font-extrabold text-black">
+            Telp. <span className="text-slate-800 font-bold">0354-4545845</span> - <span className="text-slate-800 font-bold">+62 811-3500-466</span>
+          </p>
         </div>
       </div>
       
-      {/* Red corner aesthetic box */}
-      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[45px] bg-[#E7312F] rounded-bl-2xl"></div>
+      {/* Decorative vertical red block on the right edge */}
+      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
     </div>
   );
 
@@ -1096,59 +1099,17 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                             {/* Reserved white space for manual signature and actual physical wet stamp */}
                             <div className="h-28 w-60 relative flex items-center justify-center select-none shrink-0 overflow-visible my-1 mx-auto">
                               
-                              {/* AUTHENTIC RED WATERMARK CIRCULAR WET STAMP STYLED IN DIGITAL VECTOR SVG */}
                               {showSignatureStamp && (
-                                <div className="absolute -left-3 top-[-3px] w-[130px] h-[130px] opacity-[0.88] select-none pointer-events-none rotate-[-4deg] z-20" id="recreated-red-wet-stamp">
-                                  <svg viewBox="0 0 100 100" className="w-full h-full text-red-600 fill-none stroke-red-600/90" strokeWidth="2.5">
-                                    {/* Double concentric circle borders resembling local company stamp */}
-                                    <circle cx="50" cy="50" r="42" strokeWidth="2" strokeDasharray="320" />
-                                    <circle cx="50" cy="50" r="38" strokeWidth="0.8" />
-                                    
-                                    {/* Curved header and footer text using SVG textPath */}
-                                    <defs>
-                                      <path id="stampHeaderPath" d="M 18 50 A 32 32 0 1 1 82 50" />
-                                      <path id="stampFooterPath" d="M 82 50 A 32 32 0 0 1 18 50" />
-                                    </defs>
-                                    
-                                    <text fontFamily="sans-serif" fontWeight="950" fontSize="6.2px" fill="currentColor" letterSpacing="0.3">
-                                      <textPath href="#stampHeaderPath" startOffset="50%" textAnchor="middle">
-                                        PT. PORTAL DIGITAL MEDIA NUSANTARA
-                                      </textPath>
-                                    </text>
-
-                                    <text fontFamily="sans-serif" fontWeight="950" fontSize="6.8px" fill="currentColor">
-                                      <textPath href="#stampFooterPath" startOffset="50%" textAnchor="middle">
-                                        * KABUPATEN KEDIRI *
-                                      </textPath>
-                                    </text>
-
-                                    {/* Center red signal emblem in stamp */}
-                                    <g transform="translate(37.5, 30) scale(0.25)" strokeWidth="8" fill="none" stroke="currentColor">
-                                      <path d="M15,80 L15,35 C15,25 30,15 50,45 C70,15 85,25 85,35 L85,80" />
-                                      <path d="M50,45 L50,80" />
-                                      <circle cx="50" cy="50" r="12" strokeDasharray="3" />
-                                    </g>
-                                    
-                                    {/* Division cross name block */}
-                                    <text x="50" y="65" fontFamily="sans-serif" fontWeight="950" fontSize="6px" fill="currentColor" textAnchor="middle" letterSpacing="0.5">
-                                      METARANEWS
-                                    </text>
-                                  </svg>
-                                </div>
-                              )}
-
-                              {/* AUTHENTIC BLACK SIGNATURE VECTOR SVG OVERLAY SPANNED ON TOP OF STAMP */}
-                              {showSignatureStamp && (
-                                <div className="absolute right-[10px] top-[15px] w-[150px] h-[80px] opacity-[0.95] select-none pointer-events-none rotate-[2deg] z-10" id="recreated-black-signature">
-                                  <svg viewBox="0 0 200 100" className="w-full h-full text-blue-900 stroke-blue-900 fill-none" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round">
-                                    {/* Graceful flowing director loop signature as shown in screenshot */}
-                                    <path d="M 30 55 C 50 35, 65 65, 75 25 C 80 15, 85, 30, 81 50 C 76 75, 45 80, 50 40 C 55 10, 100, 20, 110, 45 C 115 55, 120, 25, 118 65" />
-                                    {/* Center artistic slash lines */}
-                                    <path d="M 72 25 L 88 85" strokeWidth="4.8" />
-                                    <path d="M 60 70 L 115 72" strokeWidth="2.8" />
-                                    <path d="M 108 50 Q 140 10, 155 45 T 185 30" strokeWidth="3" />
-                                  </svg>
-                                </div>
+                                <img 
+                                  src="https://lh3.googleusercontent.com/d/1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf" 
+                                  alt="Tanda Tangan & Pengesahan" 
+                                  className="absolute h-[168px] max-w-none object-contain pointer-events-none select-none mix-blend-multiply z-30 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                                  referrerPolicy="no-referrer"
+                                  crossOrigin="anonymous"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf";
+                                  }}
+                                />
                               )}
 
                             </div>
