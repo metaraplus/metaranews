@@ -437,7 +437,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       <style>
         @page {
           size: A4;
-          margin: 15mm 18mm 18mm 18mm !important;
+          margin: 32mm 18mm 22mm 18mm !important;
         }
         body {
           margin: 0 !important;
@@ -455,6 +455,21 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           margin: 0 !important;
           box-shadow: none !important;
           border: none !important;
+        }
+        .print-header {
+          position: fixed;
+          top: -24mm;
+          left: 0;
+          right: 0;
+          height: 24mm;
+        }
+        .print-footer {
+          position: fixed;
+          bottom: -15mm;
+          left: -18mm;
+          right: -18mm;
+          height: 12mm;
+          z-index: 9999;
         }
         .no-print-element {
           display: none !important;
@@ -958,21 +973,18 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                 className="w-[210mm] min-h-[297mm] bg-white text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between print:block shrink-0 p-[18mm] relative"
                 style={{ contentVisibility: 'auto' }}
               >
+                {/* --- REPEATING PRINT HEADER --- */}
+                <div className="hidden print:block print-header">
+                  {renderKopSurat()}
+                </div>
+
+                {/* --- REPEATING PRINT FOOTER --- */}
+                <div className="hidden print:block print-footer">
+                  {renderFooterStripping()}
+                </div>
                 
                 {/* --- MAIN PAGE TABULAR CONTAINER --- */}
                 <table className="w-full border-collapse border-none m-0 p-0 relative z-10">
-                  {/* Table Header containing Kop Surat */}
-                  <thead>
-                    <tr className="border-none m-0 p-0">
-                      <td className="p-0 border-none m-0">
-                        {/* Render Kop Surat only during print in table header */}
-                        <div className="hidden print:block pb-6 w-full">
-                          {renderKopSurat()}
-                        </div>
-                      </td>
-                    </tr>
-                  </thead>
-
                   {/* Core Invoice Body flow */}
                   <tbody>
                     <tr className="border-none m-0 p-0">
@@ -1140,18 +1152,6 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                       </td>
                     </tr>
                   </tbody>
-
-                  {/* Table Footer containing Footer Stripping */}
-                  <tfoot>
-                    <tr className="border-none m-0 p-0">
-                      <td className="p-0 border-none m-0">
-                        {/* Render Footer only during print in table footer */}
-                        <div className="hidden print:block pt-4 w-full -mx-[18mm]">
-                          {renderFooterStripping()}
-                        </div>
-                      </td>
-                    </tr>
-                  </tfoot>
                 </table>
 
               </div>
