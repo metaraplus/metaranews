@@ -437,7 +437,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       <style>
         @page {
           size: A4;
-          margin: 15mm 18mm 18mm 18mm !important;
+          margin: 0;
         }
         body {
           margin: 0 !important;
@@ -447,21 +447,17 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           print-color-adjust: exact !important;
         }
         #print-section {
-          width: 100% !important;
-          min-height: 0 !important;
-          padding: 0 !important;
+          width: 210mm !important;
+          min-height: 297mm !important;
+          padding: 15mm !important;
           box-sizing: border-box !important;
           background: white !important;
-          margin: 0 !important;
+          margin: 0 auto !important;
           box-shadow: none !important;
           border: none !important;
         }
         .no-print-element {
           display: none !important;
-        }
-        * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
         }
       </style>
     `);
@@ -523,7 +519,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       </div>
       
       {/* Decorative vertical red block on the right edge */}
-      <div className="absolute top-[-18mm] right-[-18mm] print:top-[-15mm] print:right-[-18mm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
+      <div className="absolute top-[-18mm] right-[-18mm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
     </div>
   );
 
@@ -959,16 +955,23 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                 style={{ contentVisibility: 'auto' }}
               >
                 
+                {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
+                <div className="hidden print:block fixed top-0 left-0 right-0 h-[140px] pt-[18mm] px-[18mm] bg-white z-[100] pointer-events-none">
+                  {renderKopSurat()}
+                </div>
+
+                {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
+                <div className="hidden print:block fixed bottom-0 left-0 right-0 h-[60px] bg-white z-[100] pointer-events-none">
+                  {renderFooterStripping()}
+                </div>
+
                 {/* --- MAIN PAGE TABULAR CONTAINER --- */}
                 <table className="w-full border-collapse border-none m-0 p-0 relative z-10">
-                  {/* Table Header containing Kop Surat */}
+                  {/* Table Header Space Reservation */}
                   <thead>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        {/* Render Kop Surat only during print in table header */}
-                        <div className="hidden print:block pb-6 w-full">
-                          {renderKopSurat()}
-                        </div>
+                        <div className="hidden print:block h-[120px] w-full" />
                       </td>
                     </tr>
                   </thead>
@@ -1141,14 +1144,11 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                     </tr>
                   </tbody>
 
-                  {/* Table Footer containing Footer Stripping */}
+                  {/* Table Footer Space Reservation */}
                   <tfoot>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        {/* Render Footer only during print in table footer */}
-                        <div className="hidden print:block pt-4 w-full -mx-[18mm]">
-                          {renderFooterStripping()}
-                        </div>
+                        <div className="hidden print:block h-[50px] w-full" />
                       </td>
                     </tr>
                   </tfoot>
