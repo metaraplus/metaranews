@@ -206,7 +206,7 @@ export default function ArticleModal({
               >
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {cat.rubricName ? `[${cat.rubricName}] ${cat.categoryName}` : cat.name}
                   </option>
                 ))}
               </select>

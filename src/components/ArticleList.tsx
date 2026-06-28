@@ -43,21 +43,32 @@ export default function ArticleList({
   }, [categories]);
 
   // Color mapper helper for badges
-  const getBadgeColors = (catId: string) => {
+  const getBadgeStyleAndClass = (catId: string) => {
     const cat = categoryMap[catId];
-    if (!cat) return 'bg-slate-100 text-slate-700';
+    if (!cat) return { className: 'bg-slate-100 text-slate-700 border border-slate-200' };
     const color = cat.color;
 
+    if (color && color.startsWith('#')) {
+      return {
+        style: {
+          backgroundColor: `${color}15`,
+          color: color,
+          borderColor: `${color}35`,
+        },
+        className: 'border'
+      };
+    }
+
     switch (color) {
-      case 'red': return 'bg-red-50 text-red-700 border-red-100';
-      case 'emerald': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-      case 'blue': return 'bg-blue-50 text-blue-700 border-blue-100';
-      case 'purple': return 'bg-purple-50 text-purple-700 border-purple-100';
-      case 'pink': return 'bg-pink-50 text-pink-700 border-pink-100';
-      case 'orange': return 'bg-orange-50 text-orange-700 border-orange-100';
-      case 'rose': return 'bg-rose-50 text-rose-700 border-rose-100';
-      case 'cyan': return 'bg-cyan-50 text-cyan-700 border-cyan-100';
-      default: return 'bg-slate-50 text-slate-700 border-slate-105';
+      case 'red': return { className: 'bg-red-50 text-red-700 border border-red-100' };
+      case 'emerald': return { className: 'bg-emerald-50 text-emerald-700 border border-emerald-100' };
+      case 'blue': return { className: 'bg-blue-50 text-blue-700 border border-blue-100' };
+      case 'purple': return { className: 'bg-purple-50 text-purple-700 border border-purple-100' };
+      case 'pink': return { className: 'bg-pink-50 text-pink-700 border border-pink-100' };
+      case 'orange': return { className: 'bg-orange-50 text-orange-700 border border-orange-100' };
+      case 'rose': return { className: 'bg-rose-50 text-rose-700 border border-rose-100' };
+      case 'cyan': return { className: 'bg-cyan-50 text-cyan-700 border border-cyan-100' };
+      default: return { className: 'bg-slate-50 text-slate-700 border border-slate-105' };
     }
   };
 
@@ -272,9 +283,22 @@ export default function ArticleList({
 
                     {/* Category column */}
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getBadgeColors(article.category)}`}>
-                        {categoryObj?.name || article.category}
-                      </span>
+                      {(() => {
+                        const styleInfo = getBadgeStyleAndClass(article.category);
+                        return (
+                          <span 
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${styleInfo.className}`}
+                            style={styleInfo.style}
+                          >
+                            {categoryObj 
+                              ? (categoryObj.rubricName 
+                                  ? `${categoryObj.rubricName} > ${categoryObj.categoryName}`
+                                  : categoryObj.name)
+                              : article.category
+                            }
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     {/* News Type column */}

@@ -13,9 +13,9 @@ interface ManagementPanelProps {
   onAddJournalist: (name: string, role: Journalist['role'], coverage: string) => void;
   onDeleteJournalist: (id: string) => void;
   onEditJournalist: (id: string, name: string, role: Journalist['role'], coverage: string) => void;
-  onAddCategory: (name: string, color: string) => void;
+  onAddCategory: (rubricName: string, categoryName: string, color: string) => void;
   onDeleteCategory: (id: string) => void;
-  onEditCategory: (id: string, name: string, color: string) => void;
+  onEditCategory: (id: string, rubricName: string, categoryName: string, color: string) => void;
 }
 
 export default function ManagementPanel({
@@ -35,13 +35,14 @@ export default function ManagementPanel({
   const [jError, setJError] = useState('');
   const [jSuccess, setJSuccess] = useState(false);
 
-  // States for Category Form
-  const [cName, setCName] = useState('');
-  const [cColor, setCColor] = useState('red');
+  // States for Category Form (Separated fields)
+  const [cRubricName, setCRubricName] = useState('');
+  const [cCategoryName, setCCategoryName] = useState('');
+  const [cColor, setCColor] = useState('#3b82f6'); // freely choose custom color
   const [cError, setCError] = useState('');
   const [cSuccess, setCSuccess] = useState(false);
 
-  // States for Inline Editing
+  // States for Inline Editing (Separated fields)
   const [editingJId, setEditingJId] = useState<string | null>(null);
   const [editingJName, setEditingJName] = useState('');
   const [editingJRole, setEditingJRole] = useState<Journalist['role']>('Reporter');
@@ -49,11 +50,12 @@ export default function ManagementPanel({
   const [editingJError, setEditingJError] = useState('');
 
   const [editingCId, setEditingCId] = useState<string | null>(null);
-  const [editingCName, setEditingCName] = useState('');
-  const [editingCColor, setEditingCColor] = useState('red');
+  const [editingCRubricName, setEditingCRubricName] = useState('');
+  const [editingCCategoryName, setEditingCCategoryName] = useState('');
+  const [editingCColor, setEditingCColor] = useState('#3b82f6');
   const [editingCError, setEditingCError] = useState('');
 
-  // Color options for categories mapping
+  // Legacy fallback options (only kept for reference if needed, but not restricted)
   const COLOR_OPTIONS = [
     { value: 'red', label: 'Merah (Politik)', bg: 'bg-red-500' },
     { value: 'emerald', label: 'Hijau (Ekonomi)', bg: 'bg-emerald-500' },
@@ -94,20 +96,26 @@ export default function ManagementPanel({
     setCError('');
     setCSuccess(false);
 
-    if (!cName.trim()) {
+    if (!cRubricName.trim()) {
+      setCError('Nama rubrik tidak boleh kosong.');
+      return;
+    }
+
+    if (!cCategoryName.trim()) {
       setCError('Nama kategori wajib diisi.');
       return;
     }
 
     // Check duplicate
-    const catId = cName.trim().toLowerCase().replace(/\s+/g, '-');
-    if (categories.some(c => c.id === catId || c.name.toLowerCase() === cName.trim().toLowerCase())) {
-      setCError('Kategori sudah ada.');
+    const catId = cCategoryName.trim().toLowerCase().replace(/\s+/g, '-');
+    if (categories.some(c => c.id === catId || c.categoryName?.toLowerCase() === cCategoryName.trim().toLowerCase())) {
+      setCError('Kategori rubrik sudah ada.');
       return;
     }
 
-    onAddCategory(cName.trim(), cColor);
-    setCName('');
+    onAddCategory(cRubricName.trim(), cCategoryName.trim(), cColor);
+    setCRubricName('');
+    setCCategoryName('');
     setCSuccess(true);
     setTimeout(() => setCSuccess(false), 3000);
   };
@@ -138,24 +146,29 @@ export default function ManagementPanel({
 
   const handleEditCategorySave = (id: string) => {
     setEditingCError('');
-    if (!editingCName.trim()) {
+    if (!editingCRubricName.trim()) {
       setEditingCError('Nama rubrik tidak boleh kosong.');
       return;
     }
-    const newId = editingCName.trim().toLowerCase().replace(/\s+/g, '-');
-    if (categories.some(c => c.id !== id && (c.id === newId || c.name.toLowerCase() === editingCName.trim().toLowerCase()))) {
+    if (!editingCCategoryName.trim()) {
+      setEditingCError('Nama kategori tidak boleh kosong.');
+      return;
+    }
+    const newId = editingCCategoryName.trim().toLowerCase().replace(/\s+/g, '-');
+    if (categories.some(c => c.id !== id && (c.id === newId || c.categoryName?.toLowerCase() === editingCCategoryName.trim().toLowerCase()))) {
       setEditingCError('Kategori rubrik sudah ada.');
       return;
     }
 
-    onEditCategory(id, editingCName.trim(), editingCColor);
+    onEditCategory(id, editingCRubricName.trim(), editingCCategoryName.trim(), editingCColor);
     setEditingCId(null);
   };
 
   const startEditCategory = (cat: Category) => {
     setEditingCId(cat.id);
-    setEditingCName(cat.name);
-    setEditingCColor(cat.color);
+    setEditingCRubricName(cat.rubricName || 'Umum');
+    setEditingCCategoryName(cat.categoryName || cat.name);
+    setEditingCColor(cat.color || '#3b82f6');
     setEditingCError('');
   };
 
@@ -312,8 +325,8 @@ export default function ManagementPanel({
         <div>
           <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
             <h3 className="font-bold text-slate-900 flex items-center gap-2 text-md">
-              <Tag className="w-4 h-4 text-emerald-650" />
-              Kelola Katagori Rubrik Berita
+              <Tag className="w-4 h-4 text-emerald-600" />
+              Kelola Kategori & Rubrik Berita
             </h3>
             <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
               {categories.length} Rubrik
@@ -322,37 +335,58 @@ export default function ManagementPanel({
 
           {/* Mini form to add category */}
           <form onSubmit={handleCategorySubmit} className="mb-6 bg-slate-50/55 p-4 rounded-xl border border-slate-100 space-y-3">
-            <span className="text-xs font-bold text-slate-800 block">Buat Rubrik Rubrik Baru</span>
+            <span className="text-xs font-bold text-slate-800 block">Buat Rubrik Baru</span>
             
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="text"
-                placeholder="Nama Rubrik (Kategori)..."
-                value={cName}
-                onChange={(e) => setCName(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:ring-1 focus:ring-emerald-500 text-slate-800 font-medium"
-                id="add-category-name"
-              />
-              <select
-                value={cColor}
-                onChange={(e) => setCColor(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700 font-medium"
-                id="add-category-color"
-              >
-                {COLOR_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0"
-                id="submit-new-category"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Tambah
-              </button>
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Rubrik</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Berita, Bisnis, Lokal..."
+                    value={cRubricName}
+                    onChange={(e) => setCRubricName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:ring-1 focus:ring-emerald-500 text-slate-800 font-medium"
+                    id="add-category-rubric"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Kategori</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Politik, Ekonomi..."
+                    value={cCategoryName}
+                    onChange={(e) => setCCategoryName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:ring-1 focus:ring-emerald-500 text-slate-800 font-medium"
+                    id="add-category-name"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Pilih Warna Bebas:</label>
+                  <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1">
+                    <input
+                      type="color"
+                      value={cColor}
+                      onChange={(e) => setCColor(e.target.value)}
+                      className="w-6 h-6 rounded-md cursor-pointer border-none bg-transparent p-0"
+                      id="add-category-color-picker"
+                    />
+                    <span className="text-xs font-mono font-semibold text-slate-600 uppercase">{cColor}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 shrink-0"
+                  id="submit-new-category"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Rubrik
+                </button>
+              </div>
             </div>
 
             {cError && <p className="text-[10px] font-bold text-red-600">{cError}</p>}
@@ -364,86 +398,120 @@ export default function ManagementPanel({
           </form>
 
           {/* Category list */}
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-            {categories.map((cat) => (
-              <div key={cat.id}>
-                {editingCId === cat.id ? (
-                  <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-lg space-y-2.5 animate-in fade-in duration-200">
-                    <span className="text-[10px] font-bold text-emerald-850 block uppercase tracking-wider">Ubah Rubrik: {cat.name}</span>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={editingCName}
-                        onChange={(e) => setEditingCName(e.target.value)}
-                        className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-slate-20 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                      />
-                      <select
-                        value={editingCColor}
-                        onChange={(e) => setEditingCColor(e.target.value)}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-20 bg-white text-slate-800 font-medium"
-                      >
-                        {COLOR_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+          <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+            {categories.map((cat) => {
+              const isHex = cat.color && cat.color.startsWith('#');
+              return (
+                <div key={cat.id}>
+                  {editingCId === cat.id ? (
+                    <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-lg space-y-3 animate-in fade-in duration-200">
+                      <span className="text-[10px] font-bold text-emerald-850 block uppercase tracking-wider">Ubah Rubrik & Kategori</span>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Nama Rubrik</label>
+                          <input
+                            type="text"
+                            value={editingCRubricName}
+                            onChange={(e) => setEditingCRubricName(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-20 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <label className="text-[9px] font-bold text-slate-400 uppercase">Nama Kategori</label>
+                          <input
+                            type="text"
+                            value={editingCCategoryName}
+                            onChange={(e) => setEditingCCategoryName(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-20 bg-white text-slate-800 font-medium focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Warna:</span>
+                          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-0.5">
+                            <input
+                              type="color"
+                              value={editingCColor}
+                              onChange={(e) => setEditingCColor(e.target.value)}
+                              className="w-5 h-5 rounded-md cursor-pointer border-none bg-transparent p-0"
+                            />
+                            <span className="text-[11px] font-mono font-semibold text-slate-600 uppercase">{editingCColor}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingCId(null)}
+                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-[10px]"
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditCategorySave(cat.id)}
+                            className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px]"
+                          >
+                            Simpan
+                          </button>
+                        </div>
+                      </div>
+                      {editingCError && <p className="text-[10px] font-bold text-red-600 mt-1">{editingCError}</p>}
                     </div>
-                    {editingCError && <p className="text-[10px] font-bold text-red-600 mt-1">{editingCError}</p>}
-                    <div className="flex justify-end gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setEditingCId(null)}
-                        className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-205 text-slate-600 font-bold text-[10px]"
-                      >
-                        Batal
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleEditCategorySave(cat.id)}
-                        className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px]"
-                      >
-                        Simpan
-                      </button>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-slate-50/40 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span 
+                          className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs border border-white"
+                          style={{
+                            backgroundColor: isHex ? cat.color : (
+                              cat.color === 'red' ? '#ef4444' :
+                              cat.color === 'emerald' ? '#10b981' :
+                              cat.color === 'blue' ? '#3b82f6' :
+                              cat.color === 'purple' ? '#a855f7' :
+                              cat.color === 'pink' ? '#ec4899' :
+                              cat.color === 'orange' ? '#f97316' :
+                              cat.color === 'rose' ? '#f43f5e' :
+                              cat.color === 'cyan' ? '#06b6d4' : '#64748b'
+                            )
+                          }}
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-800">{cat.categoryName || cat.name}</span>
+                            <span className="text-[9px] font-mono font-semibold text-slate-400 uppercase">({cat.color})</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">
+                            Rubrik: {cat.rubricName || 'Umum'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditCategory(cat)}
+                          className="p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          title="Ubah Rubrik"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => confirmDeleteCategory(cat.id, cat.categoryName || cat.name)}
+                          className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Hapus Rubrik"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between p-2.5 bg-slate-50/40 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-3 h-3 rounded-full shrink-0 ${
-                        cat.color === 'red' ? 'bg-red-500' :
-                        cat.color === 'emerald' ? 'bg-emerald-500' :
-                        cat.color === 'blue' ? 'bg-blue-500' :
-                        cat.color === 'purple' ? 'bg-purple-500' :
-                        cat.color === 'pink' ? 'bg-pink-500' :
-                        cat.color === 'orange' ? 'bg-orange-500' :
-                        cat.color === 'rose' ? 'bg-rose-500' :
-                        cat.color === 'cyan' ? 'bg-cyan-500' : 'bg-slate-500'
-                      }`} />
-                      <span className="text-xs font-bold text-slate-800">{cat.name}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => startEditCategory(cat)}
-                        className="p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors"
-                        title="Ubah Rubrik"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => confirmDeleteCategory(cat.id, cat.name)}
-                        className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Hapus Rubrik"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

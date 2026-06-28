@@ -18,15 +18,15 @@ export const INITIAL_JOURNALISTS: Journalist[] = [
 ];
 
 export const INITIAL_CATEGORIES: Category[] = [
-  { id: 'politik', name: 'Politik', color: 'red' },
-  { id: 'ekonomi', name: 'Ekonomi', color: 'emerald' },
-  { id: 'jatim', name: 'Jawa Timur', color: 'blue' },
-  { id: 'kediri', name: 'Kediri Raya', color: 'purple' },
-  { id: 'budaya', name: 'Budaya & Hiburan', color: 'pink' },
-  { id: 'olahraga', name: 'Olahraga', color: 'orange' },
-  { id: 'kriminal', name: 'Kriminal & Hukum', color: 'rose' },
-  { id: 'tekno', name: 'Tekno', color: 'cyan' },
-  { id: 'nasional', name: 'Nasional', color: 'slate' }
+  { id: 'politik', name: 'Politik', rubricName: 'Berita', categoryName: 'Politik', color: '#ef4444' },
+  { id: 'ekonomi', name: 'Ekonomi', rubricName: 'Bisnis', categoryName: 'Ekonomi', color: '#10b981' },
+  { id: 'jatim', name: 'Jawa Timur', rubricName: 'Daerah', categoryName: 'Jawa Timur', color: '#3b82f6' },
+  { id: 'kediri', name: 'Kediri Raya', rubricName: 'Lokal', categoryName: 'Kediri Raya', color: '#a855f7' },
+  { id: 'budaya', name: 'Budaya & Hiburan', rubricName: 'Lifestyle', categoryName: 'Budaya & Hiburan', color: '#ec4899' },
+  { id: 'olahraga', name: 'Olahraga', rubricName: 'Sport', categoryName: 'Olahraga', color: '#f97316' },
+  { id: 'kriminal', name: 'Kriminal & Hukum', rubricName: 'Hukum', categoryName: 'Kriminal & Hukum', color: '#f43f5e' },
+  { id: 'tekno', name: 'Tekno', rubricName: 'Teknologi', categoryName: 'Tekno', color: '#06b6d4' },
+  { id: 'nasional', name: 'Nasional', rubricName: 'Dunia', categoryName: 'Nasional', color: '#64748b' }
 ];
 
 export const INITIAL_ARTICLES: Article[] = [

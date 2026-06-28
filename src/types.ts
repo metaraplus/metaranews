@@ -27,7 +27,9 @@ export interface Journalist {
 export interface Category {
   id: string;
   name: string;
-  color: string; // Tailwind tint variant, e.g., "indigo"
+  rubricName: string; // Nama Rubrik
+  categoryName: string; // Kategori
+  color: string; // Tailwind tint variant or hex color code
 }
 
 export interface Personnel {

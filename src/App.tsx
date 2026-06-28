@@ -423,11 +423,13 @@ export default function App() {
   };
 
   // Add a new news category
-  const handleAddCategory = async (name: string, color: string) => {
+  const handleAddCategory = async (rubricName: string, categoryName: string, color: string) => {
     try {
       const newCat: Category = {
-        id: name.trim().toLowerCase().replace(/\s+/g, '-'),
-        name,
+        id: categoryName.trim().toLowerCase().replace(/\s+/g, '-'),
+        name: categoryName,
+        rubricName,
+        categoryName,
         color
       };
       const updated = [...categories, newCat];
@@ -458,9 +460,15 @@ export default function App() {
     }
   };
 
-  const handleEditCategory = async (id: string, name: string, color: string) => {
+  const handleEditCategory = async (id: string, rubricName: string, categoryName: string, color: string) => {
     try {
-      const updatedCat = { id, name, color };
+      const updatedCat: Category = { 
+        id, 
+        name: categoryName, 
+        rubricName, 
+        categoryName, 
+        color 
+      };
       const updated = categories.map(c => c.id === id ? updatedCat : c);
       setCategories(updated);
       localStorage.setItem('metaranews_categories', JSON.stringify(updated));
@@ -1177,21 +1185,29 @@ export default function App() {
                       const count = filteredArticles.filter(a => a.category === cat.id).length;
                       const percentage = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
                       
+                      const displayName = cat.rubricName ? `[${cat.rubricName}] ${cat.categoryName}` : cat.name;
+                      const isHex = cat.color && cat.color.startsWith('#');
+                      
                       return (
                         <div key={cat.id} className="space-y-1">
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-bold text-slate-700 flex items-center gap-2">
-                              <span className={`w-2.5 h-2.5 rounded-full ${
-                                cat.color === 'red' ? 'bg-red-500' :
-                                cat.color === 'emerald' ? 'bg-emerald-500' :
-                                cat.color === 'blue' ? 'bg-blue-500' :
-                                cat.color === 'purple' ? 'bg-purple-500' :
-                                cat.color === 'pink' ? 'bg-pink-500' :
-                                cat.color === 'orange' ? 'bg-orange-500' :
-                                cat.color === 'rose' ? 'bg-rose-500' :
-                                cat.color === 'cyan' ? 'bg-cyan-500' : 'bg-slate-500'
-                              }`} />
-                              {cat.name}
+                              <span 
+                                className={`w-2.5 h-2.5 rounded-full ${
+                                  isHex ? '' : (
+                                    cat.color === 'red' ? 'bg-red-500' :
+                                    cat.color === 'emerald' ? 'bg-emerald-500' :
+                                    cat.color === 'blue' ? 'bg-blue-500' :
+                                    cat.color === 'purple' ? 'bg-purple-500' :
+                                    cat.color === 'pink' ? 'bg-pink-500' :
+                                    cat.color === 'orange' ? 'bg-orange-500' :
+                                    cat.color === 'rose' ? 'bg-rose-500' :
+                                    cat.color === 'cyan' ? 'bg-cyan-500' : 'bg-slate-500'
+                                  )
+                                }`} 
+                                style={isHex ? { backgroundColor: cat.color } : undefined}
+                              />
+                              {displayName}
                             </span>
                             <span className="font-mono font-semibold text-slate-500">
                               {count} berita ({percentage}%)
@@ -1202,16 +1218,21 @@ export default function App() {
                           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div 
                               className={`h-full rounded-full transition-all duration-500 ease-out ${
-                                cat.color === 'red' ? 'bg-red-500' :
-                                cat.color === 'emerald' ? 'bg-emerald-500' :
-                                cat.color === 'blue' ? 'bg-blue-500' :
-                                cat.color === 'purple' ? 'bg-purple-500' :
-                                cat.color === 'pink' ? 'bg-pink-500' :
-                                cat.color === 'orange' ? 'bg-orange-500' :
-                                cat.color === 'rose' ? 'bg-rose-500' :
-                                cat.color === 'cyan' ? 'bg-cyan-500' : 'bg-slate-500'
+                                isHex ? '' : (
+                                  cat.color === 'red' ? 'bg-red-500' :
+                                  cat.color === 'emerald' ? 'bg-emerald-500' :
+                                  cat.color === 'blue' ? 'bg-blue-500' :
+                                  cat.color === 'purple' ? 'bg-purple-500' :
+                                  cat.color === 'pink' ? 'bg-pink-500' :
+                                  cat.color === 'orange' ? 'bg-orange-500' :
+                                  cat.color === 'rose' ? 'bg-rose-500' :
+                                  cat.color === 'cyan' ? 'bg-cyan-500' : 'bg-slate-500'
+                                )
                               }`}
-                              style={{ width: `${percentage}%` }}
+                              style={{ 
+                                width: `${percentage}%`,
+                                ...(isHex ? { backgroundColor: cat.color } : {})
+                              }}
                             />
                           </div>
                         </div>
