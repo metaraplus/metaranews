@@ -24,6 +24,7 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
   const [activeMetric, setActiveMetric] = useState<'all' | 'reporter' | 'writer' | 'documenter'>('all');
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [selectedJournalist, setSelectedJournalist] = useState<string | null>(null);
+  const [hoveredJurnName, setHoveredJurnName] = useState<string | null>(null);
 
   // Filter articles based on selected month
   const filteredArticles = useMemo(() => {
@@ -167,6 +168,41 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
     }
   }, [filteredArticles, selectedMonth, activeJournalists, activeMetric, journalists, selectedJournalist]);
 
+  // Journalists displayed in the clustered chart (only active ones)
+  const displayedJournalists = useMemo(() => {
+    const list = journalists.filter(jurn => {
+      return filteredArticles.some(a => 
+        a.reporter === jurn.name || a.writer === jurn.name || a.documenter === jurn.name
+      );
+    });
+    if (selectedJournalist) {
+      return list.filter(jurn => jurn.name === selectedJournalist);
+    }
+    return list;
+  }, [journalists, filteredArticles, selectedJournalist]);
+
+  // Contribution counts grouped per journalist for clustered chart
+  const clusteredData = useMemo(() => {
+    return displayedJournalists.map(jurn => {
+      const jurnArticles = filteredArticles.filter(a => 
+        a.reporter === jurn.name || a.writer === jurn.name || a.documenter === jurn.name
+      );
+      const reporterCount = jurnArticles.filter(a => a.reporter === jurn.name).length;
+      const writerCount = jurnArticles.filter(a => a.writer === jurn.name).length;
+      const documenterCount = jurnArticles.filter(a => a.documenter === jurn.name).length;
+      
+      return {
+        journalist: jurn,
+        name: jurn.name,
+        reporter: reporterCount,
+        writer: writerCount,
+        documenter: documenterCount,
+        maxSingle: Math.max(reporterCount, writerCount, documenterCount),
+        total: reporterCount + writerCount + documenterCount
+      };
+    });
+  }, [displayedJournalists, filteredArticles]);
+
   // Chart measurements
   const chartHeight = 280;
   const paddingLeft = 32; // Spacing for Y-axis labels
@@ -175,11 +211,23 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
   const paddingBottom = 30; // Spacing for X-axis labels
 
   const maxVal = useMemo(() => {
-    if (dailyData.length === 0) return 5;
-    const values = dailyData.map(d => d.total);
-    const max = Math.max(...values);
-    return max <= 0 ? 5 : max;
-  }, [dailyData]);
+    if (selectedMonth !== 'all') {
+      if (dailyData.length === 0) return 5;
+      const values = dailyData.map(d => d.total);
+      const max = Math.max(...values);
+      return max <= 0 ? 5 : max;
+    } else {
+      if (clusteredData.length === 0) return 5;
+      const values: number[] = [];
+      clusteredData.forEach(d => {
+        if (activeMetric === 'all' || activeMetric === 'reporter') values.push(d.reporter);
+        if (activeMetric === 'all' || activeMetric === 'writer') values.push(d.writer);
+        if (activeMetric === 'all' || activeMetric === 'documenter') values.push(d.documenter);
+      });
+      const max = Math.max(...values);
+      return max <= 0 ? 5 : max;
+    }
+  }, [selectedMonth, dailyData, clusteredData, activeMetric]);
 
   // Rounded grid ticks based on max value
   const ticks = useMemo(() => {
@@ -365,189 +413,391 @@ export default function JournalistChart({ articles, journalists, selectedMonth }
                   {/* Legend element is rendered outside SVG using standard HTML overlay or inline legend. Let us put it in the HTML section before grid! */}
                 </g>
 
-                {/* Vertical Bars for each day */}
-                {dailyData.map((d, index) => {
-                  const usableWidth = 760 - paddingLeft - paddingRight;
-                  const barSpacing = usableWidth / dailyData.length;
-                  const barWidth = Math.max(barSpacing * 0.65, 4);
-                  const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
+                {/* Vertical Bars / Clustered Bars */}
+                {selectedMonth === 'all' ? (
+                  // Clustered Bar Chart for "Semua Bulan" (All Months)
+                  clusteredData.map((d, index) => {
+                    const usableWidth = 760 - paddingLeft - paddingRight;
+                    const columnWidth = usableWidth / clusteredData.length;
+                    const clusterWidth = columnWidth * 0.75;
+                    const gap = 2;
+                    // Width of each bar inside the cluster
+                    const barWidth = Math.min(30, (clusterWidth - 2 * gap) / 3);
+                    const clusterWidthActual = barWidth * 3 + 2 * gap;
+                    
+                    // Column start and cluster start
+                    const xStart = paddingLeft + index * columnWidth;
+                    const xCluster = xStart + (columnWidth - clusterWidthActual) / 2;
 
-                  const isHovered = hoveredDate === d.fullDate;
-                  const maxTick = Math.max(...ticks);
+                    const isHovered = hoveredJurnName === d.name;
+                    const maxTick = Math.max(...ticks);
 
-                  // Keep track of stacking Y offsets
-                  let currentYOffset = 0;
+                    // Define the three roles for clustering
+                    const roles = [
+                      { type: 'reporter', val: d.reporter, color: '#f43f5e', label: 'Meliput' },
+                      { type: 'writer', val: d.writer, color: '#10b981', label: 'Menulis' },
+                      { type: 'documenter', val: d.documenter, color: '#6366f1', label: 'Dokumentasi' }
+                    ];
 
-                  return (
-                    <g
-                      key={d.fullDate}
-                      onMouseEnter={() => setHoveredDate(d.fullDate)}
-                      onMouseLeave={() => setHoveredDate(null)}
-                      className="cursor-pointer group"
-                    >
-                      {/* Hover background interactive column trigger */}
-                      <rect
-                        x={paddingLeft + index * barSpacing}
-                        y={paddingTop}
-                        width={barSpacing}
-                        height={chartHeight - paddingTop - paddingBottom}
-                        fill="#f8fafc"
-                        opacity={isHovered ? 0.75 : 0}
-                        className="transition-opacity duration-150"
-                      />
+                    return (
+                      <g
+                        key={d.name}
+                        onMouseEnter={() => setHoveredJurnName(d.name)}
+                        onMouseLeave={() => setHoveredJurnName(null)}
+                        className="cursor-pointer group"
+                      >
+                        {/* Hover column background highlight */}
+                        <rect
+                          x={xStart}
+                          y={paddingTop}
+                          width={columnWidth}
+                          height={chartHeight - paddingTop - paddingBottom}
+                          fill="#f8fafc"
+                          opacity={isHovered ? 0.75 : 0}
+                          className="transition-opacity duration-150"
+                        />
 
-                      {/* Display the stacked bar layers */}
-                      {d.stacks.map((stack, stackIdx) => {
-                        const segmentHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * stack.val) / maxTick : 0;
-                        const segmentY = chartHeight - paddingBottom - currentYOffset - segmentHeight;
-                        
-                        // Accumulate the offset for the next segment in the stack
-                        currentYOffset += segmentHeight;
+                        {/* Draw the clustered bars */}
+                        {roles.map((role, roleIdx) => {
+                          const isActive = activeMetric === 'all' || activeMetric === role.type;
+                          const barHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * role.val) / maxTick : 0;
+                          const barY = chartHeight - paddingBottom - barHeight;
+                          const barX = xCluster + roleIdx * (barWidth + gap);
 
-                        return (
-                          <rect
-                            key={`${d.fullDate}-${stack.name}`}
-                            x={x}
-                            y={segmentY}
-                            width={barWidth}
-                            height={segmentHeight}
-                            fill={stack.color}
-                            className="transition-all duration-300 ease-out hover:brightness-105"
-                          />
-                        );
-                      })}
+                          return (
+                            <rect
+                              key={role.type}
+                              x={barX}
+                              y={barY}
+                              width={barWidth}
+                              height={barHeight}
+                              fill={role.color}
+                              opacity={isActive ? 1.0 : 0.15}
+                              className="transition-all duration-300 ease-out hover:brightness-105"
+                              rx="2"
+                            />
+                          );
+                        })}
 
-                      {/* Day number x-axis text labels */}
-                      {(dailyData.length <= 15 || index % 2 === 0 || isHovered) && (
+                        {/* Journalist X-Axis Label */}
                         <text
-                          x={x + barWidth / 2}
-                          y={chartHeight - paddingBottom + 14}
+                          x={xStart + columnWidth / 2}
+                          y={chartHeight - paddingBottom + 16}
                           textAnchor="middle"
-                          fill={isHovered ? "#0f172a" : "#94a3b8"}
+                          fill={isHovered ? "#0f172a" : "#64748b"}
                           fontSize={isHovered ? "10" : "8"}
                           fontWeight={isHovered ? "700" : "500"}
-                          className="transition-all font-mono duration-150"
+                          className="transition-all font-semibold duration-150"
                         >
-                          {d.label}
+                          {d.name.length > 12 ? `${d.name.slice(0, 11)}.` : d.name}
                         </text>
-                      )}
 
-                      {/* Floating total value indicator immediately above the accumulated stack */}
-                      {isHovered && d.total > 0 && (
-                        <text
-                          x={x + barWidth / 2}
-                          y={Math.max(chartHeight - paddingBottom - currentYOffset - 5, paddingTop + 8)}
-                          textAnchor="middle"
-                          fill="#1e293b"
-                          fontSize="9"
-                          fontWeight="800"
-                          className="font-mono"
-                        >
-                          {d.total}
-                        </text>
-                      )}
-                    </g>
-                  );
-                })}
+                        {/* Floating Total Sum above the cluster on hover */}
+                        {isHovered && d.total > 0 && (
+                          <text
+                            x={xStart + columnWidth / 2}
+                            y={Math.max(chartHeight - paddingBottom - (maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * d.maxSingle) / maxTick : 0) - 6, paddingTop + 8)}
+                            textAnchor="middle"
+                            fill="#0f172a"
+                            fontSize="10"
+                            fontWeight="800"
+                            className="font-mono"
+                          >
+                            {activeMetric === 'all' 
+                              ? `${d.total} pnt` 
+                              : `${activeMetric === 'reporter' ? d.reporter : activeMetric === 'writer' ? d.writer : d.documenter} karya`
+                            }
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })
+                ) : (
+                  // Daily Productivity Stacked Bar Chart (original logic)
+                  dailyData.map((d, index) => {
+                    const usableWidth = 760 - paddingLeft - paddingRight;
+                    const barSpacing = usableWidth / dailyData.length;
+                    const barWidth = Math.max(barSpacing * 0.65, 4);
+                    const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
 
-                {/* Floating SVG Tooltip element placed at the top coordinate stack */}
-                {hoveredDate && (() => {
-                  const d = dailyData.find(item => item.fullDate === hoveredDate);
-                  if (!d || d.total === 0) return null;
-                  const index = dailyData.indexOf(d);
-                  const usableWidth = 760 - paddingLeft - paddingRight;
-                  const barSpacing = usableWidth / dailyData.length;
-                  const barWidth = Math.max(barSpacing * 0.65, 4);
-                  const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
-                  
-                  const maxTick = Math.max(...ticks);
-                  const totalHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * d.total) / maxTick : 0;
-                  const topOfBar = chartHeight - paddingBottom - totalHeight;
-                  const tooltipY = Math.max(topOfBar - 15, paddingTop + 10);
+                    const isHovered = hoveredDate === d.fullDate;
+                    const maxTick = Math.max(...ticks);
 
-                  const parts = d.fullDate.split('-');
-                  const monthsIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-                  const monthName = parts[1] ? monthsIndo[parseInt(parts[1], 10) - 1] : '';
-                  const dateLabel = parts[2] ? `${parseInt(parts[2], 10)} ${monthName} ${parts[0]}` : d.fullDate;
+                    // Keep track of stacking Y offsets
+                    let currentYOffset = 0;
 
-                  // Tooltip box size dynamic based on number of contributors
-                  const boxHeight = 22 + (d.stacks.length * 12) + 6;
-                  const boxWidth = 150;
-                  
-                  // Constrain inside parent width boundary
-                  let tooltipX = x + barWidth / 2;
-                  if (tooltipX - boxWidth / 2 < paddingLeft) {
-                    tooltipX = paddingLeft + boxWidth / 2;
-                  } else if (tooltipX + boxWidth / 2 > 760 - paddingRight) {
-                    tooltipX = 760 - paddingRight - boxWidth / 2;
-                  }
-
-                  return (
-                    <g className="pointer-events-none transition-all duration-150 z-50">
-                      <rect
-                        x={tooltipX - boxWidth / 2}
-                        y={tooltipY - boxHeight}
-                        width={boxWidth}
-                        height={boxHeight}
-                        rx="6"
-                        fill="#0f172a"
-                        stroke="#1e293b"
-                        strokeWidth="1"
-                        opacity="0.95"
-                      />
-                      <text
-                        x={tooltipX}
-                        y={tooltipY - boxHeight + 14}
-                        textAnchor="middle"
-                        fill="#38bdf8"
-                        fontSize="9"
-                        fontWeight="bold"
+                    return (
+                      <g
+                        key={d.fullDate}
+                        onMouseEnter={() => setHoveredDate(d.fullDate)}
+                        onMouseLeave={() => setHoveredDate(null)}
+                        className="cursor-pointer group"
                       >
-                        {dateLabel}
-                      </text>
+                        {/* Hover background interactive column trigger */}
+                        <rect
+                          x={paddingLeft + index * barSpacing}
+                          y={paddingTop}
+                          width={barSpacing}
+                          height={chartHeight - paddingTop - paddingBottom}
+                          fill="#f8fafc"
+                          opacity={isHovered ? 0.75 : 0}
+                          className="transition-opacity duration-150"
+                        />
 
-                      {d.stacks.map((stack, sIdx) => {
-                        const yPos = tooltipY - boxHeight + 28 + (sIdx * 12);
-                        return (
-                          <g key={stack.name}>
-                            {/* Color Legend Indicator dot inside tooltip */}
-                            <circle
-                              cx={tooltipX - boxWidth / 2 + 12}
-                              cy={yPos - 3}
-                              r="3.5"
+                        {/* Display the stacked bar layers */}
+                        {d.stacks.map((stack, stackIdx) => {
+                          const segmentHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * stack.val) / maxTick : 0;
+                          const segmentY = chartHeight - paddingBottom - currentYOffset - segmentHeight;
+                          
+                          // Accumulate the offset for the next segment in the stack
+                          currentYOffset += segmentHeight;
+
+                          return (
+                            <rect
+                              key={`${d.fullDate}-${stack.name}`}
+                              x={x}
+                              y={segmentY}
+                              width={barWidth}
+                              height={segmentHeight}
                               fill={stack.color}
+                              className="transition-all duration-300 ease-out hover:brightness-105"
                             />
-                            <text
-                              x={tooltipX - boxWidth / 2 + 22}
-                              y={yPos}
-                              fill="#f8fafc"
-                              fontSize="8.5"
-                              fontWeight="600"
-                              textAnchor="start"
-                            >
-                              {stack.name.length > 15 ? `${stack.name.slice(0, 14)}..` : stack.name}
-                            </text>
-                            <text
-                              x={tooltipX + boxWidth / 2 - 12}
-                              y={yPos}
-                              fill="#94a3b8"
-                              fontSize="8.5"
-                              fontWeight="bold"
-                              textAnchor="end"
-                            >
-                              {stack.val} {activeMetric === 'all' ? 'pnt' : 'karya'}
-                            </text>
-                          </g>
-                        );
-                      })}
-                      
-                      <polygon
-                        points={`${tooltipX - 4},${tooltipY} ${tooltipX + 4},${tooltipY} ${tooltipX},${tooltipY + 4}`}
-                        fill="#0f172a"
-                      />
-                    </g>
-                  );
-                })()}
+                          );
+                        })}
+
+                        {/* Day number x-axis text labels */}
+                        {(dailyData.length <= 15 || index % 2 === 0 || isHovered) && (
+                          <text
+                            x={x + barWidth / 2}
+                            y={chartHeight - paddingBottom + 14}
+                            textAnchor="middle"
+                            fill={isHovered ? "#0f172a" : "#94a3b8"}
+                            fontSize={isHovered ? "10" : "8"}
+                            fontWeight={isHovered ? "700" : "500"}
+                            className="transition-all font-mono duration-150"
+                          >
+                            {d.label}
+                          </text>
+                        )}
+
+                        {/* Floating total value indicator immediately above the accumulated stack */}
+                        {isHovered && d.total > 0 && (
+                          <text
+                            x={x + barWidth / 2}
+                            y={Math.max(chartHeight - paddingBottom - currentYOffset - 5, paddingTop + 8)}
+                            textAnchor="middle"
+                            fill="#1e293b"
+                            fontSize="9"
+                            fontWeight="800"
+                            className="font-mono"
+                          >
+                            {d.total}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })
+                )}
+
+                {/* Floating SVG Tooltip element placed at the top coordinate stack/cluster */}
+                {selectedMonth === 'all' ? (
+                  hoveredJurnName && (() => {
+                    const d = clusteredData.find(item => item.name === hoveredJurnName);
+                    if (!d) return null;
+                    const index = clusteredData.indexOf(d);
+                    
+                    const usableWidth = 760 - paddingLeft - paddingRight;
+                    const columnWidth = usableWidth / clusteredData.length;
+                    const x = paddingLeft + index * columnWidth + columnWidth / 2;
+                    
+                    const maxTick = Math.max(...ticks);
+                    const highestBarHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * d.maxSingle) / maxTick : 0;
+                    const topOfBar = chartHeight - paddingBottom - highestBarHeight;
+                    const tooltipY = Math.max(topOfBar - 15, paddingTop + 10);
+
+                    // Tooltip box measurements
+                    const boxHeight = 65;
+                    const boxWidth = 160;
+                    
+                    // Constrain inside parent boundaries
+                    let tooltipX = x;
+                    if (tooltipX - boxWidth / 2 < paddingLeft) {
+                      tooltipX = paddingLeft + boxWidth / 2;
+                    } else if (tooltipX + boxWidth / 2 > 760 - paddingRight) {
+                      tooltipX = 760 - paddingRight - boxWidth / 2;
+                    }
+
+                    const breakdown = [
+                      { label: 'Meliput', val: d.reporter, color: '#f43f5e', type: 'reporter' },
+                      { label: 'Menulis', val: d.writer, color: '#10b981', type: 'writer' },
+                      { label: 'Dokumentasi', val: d.documenter, color: '#6366f1', type: 'documenter' }
+                    ];
+
+                    return (
+                      <g className="pointer-events-none transition-all duration-150 z-50">
+                        <rect
+                          x={tooltipX - boxWidth / 2}
+                          y={tooltipY - boxHeight}
+                          width={boxWidth}
+                          height={boxHeight}
+                          rx="6"
+                          fill="#0f172a"
+                          stroke="#1e293b"
+                          strokeWidth="1"
+                          opacity="0.95"
+                        />
+                        <text
+                          x={tooltipX}
+                          y={tooltipY - boxHeight + 14}
+                          textAnchor="middle"
+                          fill="#38bdf8"
+                          fontSize="9.5"
+                          fontWeight="bold"
+                        >
+                          {d.name}
+                        </text>
+
+                        {breakdown.map((item, idx) => {
+                          const yPos = tooltipY - boxHeight + 26 + (idx * 11);
+                          const isDimmed = activeMetric !== 'all' && activeMetric !== item.type;
+                          return (
+                            <g key={item.label} opacity={isDimmed ? 0.35 : 1.0}>
+                              <circle
+                                cx={tooltipX - boxWidth / 2 + 12}
+                                cy={yPos - 3}
+                                r="3"
+                                fill={item.color}
+                              />
+                              <text
+                                x={tooltipX - boxWidth / 2 + 20}
+                                y={yPos}
+                                fill="#f8fafc"
+                                fontSize="8"
+                                fontWeight="600"
+                                textAnchor="start"
+                              >
+                                {item.label}
+                              </text>
+                              <text
+                                x={tooltipX + boxWidth / 2 - 12}
+                                y={yPos}
+                                fill="#94a3b8"
+                                fontSize="8"
+                                fontWeight="bold"
+                                textAnchor="end"
+                              >
+                                {item.val} karya
+                              </text>
+                            </g>
+                          );
+                        })}
+                        
+                        <polygon
+                          points={`${tooltipX - 4},${tooltipY} ${tooltipX + 4},${tooltipY} ${tooltipX},${tooltipY + 4}`}
+                          fill="#0f172a"
+                        />
+                      </g>
+                    );
+                  })()
+                ) : (
+                  hoveredDate && (() => {
+                    const d = dailyData.find(item => item.fullDate === hoveredDate);
+                    if (!d || d.total === 0) return null;
+                    const index = dailyData.indexOf(d);
+                    const usableWidth = 760 - paddingLeft - paddingRight;
+                    const barSpacing = usableWidth / dailyData.length;
+                    const barWidth = Math.max(barSpacing * 0.65, 4);
+                    const x = paddingLeft + index * barSpacing + (barSpacing - barWidth) / 2;
+                    
+                    const maxTick = Math.max(...ticks);
+                    const totalHeight = maxTick > 0 ? ((chartHeight - paddingBottom - paddingTop) * d.total) / maxTick : 0;
+                    const topOfBar = chartHeight - paddingBottom - totalHeight;
+                    const tooltipY = Math.max(topOfBar - 15, paddingTop + 10);
+
+                    const parts = d.fullDate.split('-');
+                    const monthsIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    const monthName = parts[1] ? monthsIndo[parseInt(parts[1], 10) - 1] : '';
+                    const dateLabel = parts[2] ? `${parseInt(parts[2], 10)} ${monthName} ${parts[0]}` : d.fullDate;
+
+                    // Tooltip box size dynamic based on number of contributors
+                    const boxHeight = 22 + (d.stacks.length * 12) + 6;
+                    const boxWidth = 150;
+                    
+                    // Constrain inside parent width boundary
+                    let tooltipX = x + barWidth / 2;
+                    if (tooltipX - boxWidth / 2 < paddingLeft) {
+                      tooltipX = paddingLeft + boxWidth / 2;
+                    } else if (tooltipX + boxWidth / 2 > 760 - paddingRight) {
+                      tooltipX = 760 - paddingRight - boxWidth / 2;
+                    }
+
+                    return (
+                      <g className="pointer-events-none transition-all duration-150 z-50">
+                        <rect
+                          x={tooltipX - boxWidth / 2}
+                          y={tooltipY - boxHeight}
+                          width={boxWidth}
+                          height={boxHeight}
+                          rx="6"
+                          fill="#0f172a"
+                          stroke="#1e293b"
+                          strokeWidth="1"
+                          opacity="0.95"
+                        />
+                        <text
+                          x={tooltipX}
+                          y={tooltipY - boxHeight + 14}
+                          textAnchor="middle"
+                          fill="#38bdf8"
+                          fontSize="9"
+                          fontWeight="bold"
+                        >
+                          {dateLabel}
+                        </text>
+
+                        {d.stacks.map((stack, sIdx) => {
+                          const yPos = tooltipY - boxHeight + 28 + (sIdx * 12);
+                          return (
+                            <g key={stack.name}>
+                              {/* Color Legend Indicator dot inside tooltip */}
+                              <circle
+                                cx={tooltipX - boxWidth / 2 + 12}
+                                cy={yPos - 3}
+                                r="3.5"
+                                fill={stack.color}
+                              />
+                              <text
+                                x={tooltipX - boxWidth / 2 + 22}
+                                y={yPos}
+                                fill="#f8fafc"
+                                fontSize="8.5"
+                                fontWeight="600"
+                                textAnchor="start"
+                              >
+                                {stack.name.length > 15 ? `${stack.name.slice(0, 14)}..` : stack.name}
+                              </text>
+                              <text
+                                x={tooltipX + boxWidth / 2 - 12}
+                                y={yPos}
+                                fill="#94a3b8"
+                                fontSize="8.5"
+                                fontWeight="bold"
+                                textAnchor="end"
+                              >
+                                {stack.val} {activeMetric === 'all' ? 'pnt' : 'karya'}
+                              </text>
+                            </g>
+                          );
+                        })}
+                        
+                        <polygon
+                          points={`${tooltipX - 4},${tooltipY} ${tooltipX + 4},${tooltipY} ${tooltipX},${tooltipY + 4}`}
+                          fill="#0f172a"
+                        />
+                      </g>
+                    );
+                  })()
+                )}
               </svg>
             </div>
           </div>
