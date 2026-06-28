@@ -63,7 +63,10 @@
       width: 210mm !important;
       min-height: 297mm !important;
       margin: 0 !important;
-      padding: 18mm !important;
+      padding-top: 2cm !important;
+      padding-bottom: 0.25cm !important;
+      padding-left: 2.54cm !important;
+      padding-right: 2.54cm !important;
       box-sizing: border-box !important;
       background: white !important;
       border: none !important;
