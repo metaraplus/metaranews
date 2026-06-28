@@ -437,7 +437,10 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       <style>
         @page {
           size: A4;
-          margin: 0;
+          margin-top: 2cm;
+          margin-bottom: 0.25cm;
+          margin-left: 2.54cm;
+          margin-right: 2.54cm;
         }
         body {
           margin: 0 !important;
@@ -447,15 +450,11 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           print-color-adjust: exact !important;
         }
         #print-section {
-          width: 210mm !important;
-          min-height: 297mm !important;
-          padding-top: 2cm !important;
-          padding-bottom: 0.25cm !important;
-          padding-left: 2.54cm !important;
-          padding-right: 2.54cm !important;
+          width: 100% !important;
+          padding: 0 !important;
           box-sizing: border-box !important;
           background: white !important;
-          margin: 0 auto !important;
+          margin: 0 !important;
           box-shadow: none !important;
           border: none !important;
         }
