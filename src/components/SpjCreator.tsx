@@ -24,6 +24,39 @@ import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
+// High-fidelity inline vector SVG Logo for METARANEWS to bypass Google Drive CORS restrictions
+const MetaraLogoSvg = ({ className = "w-full h-full" }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="logoRedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#E7312F" />
+        <stop offset="100%" stopColor="#B51B1A" />
+      </linearGradient>
+    </defs>
+    {/* Clean circular gradient brand base */}
+    <circle cx="50" cy="50" r="46" fill="url(#logoRedGrad)" />
+    {/* Stylized geometric corporate 'M' resembling transmission waves/bars */}
+    <path 
+      d="M28 68 V38 L50 56 L72 38 V68" 
+      stroke="white" 
+      strokeWidth="10" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+    {/* Pulsing focal wave/dot */}
+    <circle cx="50" cy="27" r="6" fill="white" />
+    {/* Radiating micro-waves at top */}
+    <path 
+      d="M36 22 A18 18 0 0 1 64 22" 
+      stroke="white" 
+      strokeWidth="3.5" 
+      strokeLinecap="round" 
+      fill="none" 
+      opacity="0.8"
+    />
+  </svg>
+);
+
 // Helper to format date in Indonesian long style: "7 April 2026"
 const formatIndonesianDate = (dateStr: string): string => {
   if (!dateStr) return '';
@@ -378,17 +411,17 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         throw new Error('Elemen cetak tidak ditemukan.');
       }
 
-      // options for high quality capture
+      // options for high quality vector-clear capture
       const options = {
-        scale: 2, // crisp resolution
-        useCORS: true, // load Google User Content CORS images correctly
-        allowTaint: true,
+        scale: 2.5, // slightly higher crispness for premium A4 text scaling
+        useCORS: true, // load CORS assets correctly if any exist
+        allowTaint: false, // PREVENT canvas taint; allows safe call to toDataURL()
         backgroundColor: '#ffffff',
         logging: false
       };
 
       const canvas = await html2canvas(element, options);
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -405,16 +438,101 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       pdf.save(`SPJ_${safeInvoiceNum}.pdf`);
     } catch (err: any) {
       console.error('Gagal membuat PDF:', err);
-      setErrorMsg('Gagal mengunduh PDF. Silakan gunakan tombol cetak manual.');
+      setErrorMsg('Gagal mengunduh PDF. Silakan gunakan tombol cetak langsung di bawah.');
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  // Print trigger
+  // Highly robust Print trigger using an isolated iframe to guarantee perfect A4 dimensions and style loads inside iFrames
   const handlePrint = () => {
     if (!selectedSpj) return;
-    window.print();
+    
+    const element = document.getElementById('print-section');
+    if (!element) {
+      setErrorMsg('Elemen cetak tidak ditemukan.');
+      return;
+    }
+
+    // 1. Create temporary print iframe hidden in screen
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.style.zIndex = '-9999';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      setErrorMsg('Gagal menginisialisasi modul cetak.');
+      return;
+    }
+
+    // 2. Open document stream and write headers, styles & body HTML
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head><title>Cetak SPJ</title>');
+    
+    // Copy all style sheets and style tags from current workspace so Tailwind styles compile perfectly
+    document.querySelectorAll('style, link[rel="stylesheet"]').forEach(styleNode => {
+      doc.write(styleNode.outerHTML);
+    });
+
+    // Write specific page sizing layout rule to guarantee clean print formatting 
+    doc.write(`
+      <style>
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        #print-section {
+          width: 210mm !important;
+          min-height: 297mm !important;
+          padding: 15mm !important;
+          box-sizing: border-box !important;
+          background: white !important;
+          margin: 0 auto !important;
+          box-shadow: none !important;
+          border: none !important;
+        }
+        .no-print-element {
+          display: none !important;
+        }
+      </style>
+    `);
+    
+    doc.write('</head><body>');
+    doc.write(element.outerHTML);
+    doc.write('</body></html>');
+    doc.close();
+
+    // 3. Wait for image files and styling layers to fully execute, then print
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('Print failure:', e);
+        setErrorMsg('Gagal memanggil antrean cetak browser.');
+      } finally {
+        // Safe clean-up of temporary frame
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }
+    }, 500);
   };
 
   const renderKopSurat = () => (
@@ -424,16 +542,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         <div className="flex flex-col items-center shrink-0">
           {/* Real Logo Image */}
           <div className="w-[74px] h-[74px] flex items-center justify-center relative overflow-hidden">
-            <img 
-              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
-              alt="Metaranews Logo" 
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
-              onError={(e) => {
-                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
-              }}
-            />
+            <MetaraLogoSvg className="w-full h-full object-contain" />
           </div>
           {/* Metara text */}
           <div className="text-center mt-1 leading-none">
@@ -467,16 +576,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         <div className="w-[44px] h-[44px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
           {/* Logo image inside footer */}
           <div className="w-[30px] h-[30px] flex items-center justify-center relative overflow-hidden">
-            <img 
-              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
-              alt="Metaranews Logo" 
-              className="w-full h-full object-contain"
-              referrerPolicy="no-referrer"
-              crossOrigin="anonymous"
-              onError={(e) => {
-                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
-              }}
-            />
+            <MetaraLogoSvg className="w-full h-full object-contain" />
           </div>
         </div>
       </div>
