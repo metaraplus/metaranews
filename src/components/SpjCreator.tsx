@@ -449,7 +449,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         #print-section {
           width: 210mm !important;
           min-height: 297mm !important;
-          padding: 15mm !important;
+          padding: 18mm !important;
           box-sizing: border-box !important;
           background: white !important;
           margin: 0 auto !important;
@@ -956,12 +956,12 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
               >
                 
                 {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
-                <div className="hidden print:block fixed top-0 left-0 right-0 h-[140px] pt-[18mm] px-[18mm] bg-white z-[100] pointer-events-none">
+                <div className="hidden print:block fixed top-0 left-0 w-[210mm] h-[140px] pt-[18mm] px-[18mm] bg-white z-[100] pointer-events-none">
                   {renderKopSurat()}
                 </div>
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
-                <div className="hidden print:block fixed bottom-0 left-0 right-0 h-[60px] bg-white z-[100] pointer-events-none">
+                <div className="hidden print:block fixed bottom-0 left-0 w-[210mm] h-[60px] bg-white z-[100] pointer-events-none">
                   {renderFooterStripping()}
                 </div>
 
