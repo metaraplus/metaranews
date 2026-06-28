@@ -16,10 +16,13 @@ import {
   Layers,
   Facebook,
   Instagram,
-  Youtube
+  Youtube,
+  Download
 } from 'lucide-react';
 import { Spj, SpjItem } from '../types';
 import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 // Helper to format date in Indonesian long style: "7 April 2026"
 const formatIndonesianDate = (dateStr: string): string => {
@@ -86,6 +89,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
   
   // Custom interactive features
   const [showSignatureStamp, setShowSignatureStamp] = useState(true);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Safe fetch from Firestore with initial local render and background merge sync
   useEffect(() => {
@@ -362,6 +366,51 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
     return selectedSpj.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
   };
 
+  // Save PDF using html2canvas & jsPDF for perfect A4 rendering inside iframe
+  const handleSavePDF = async () => {
+    if (!selectedSpj) return;
+    setIsGeneratingPdf(true);
+    setErrorMsg('');
+    
+    try {
+      const element = document.getElementById('print-section');
+      if (!element) {
+        throw new Error('Elemen cetak tidak ditemukan.');
+      }
+
+      // options for high quality capture
+      const options = {
+        scale: 2, // crisp resolution
+        useCORS: true, // load Google User Content CORS images correctly
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      };
+
+      const canvas = await html2canvas(element, options);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      
+      const safeInvoiceNum = selectedSpj.invoiceNumber.replace(/[\/\\?%*:|"<>. ]/g, '_');
+      pdf.save(`SPJ_${safeInvoiceNum}.pdf`);
+    } catch (err: any) {
+      console.error('Gagal membuat PDF:', err);
+      setErrorMsg('Gagal mengunduh PDF. Silakan gunakan tombol cetak manual.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   // Print trigger
   const handlePrint = () => {
     if (!selectedSpj) return;
@@ -380,6 +429,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
               alt="Metaranews Logo" 
               className="w-full h-full object-contain"
               referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
               onError={(e) => {
                 e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
               }}
@@ -422,6 +472,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
               alt="Metaranews Logo" 
               className="w-full h-full object-contain"
               referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
               onError={(e) => {
                 e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
               }}
@@ -794,27 +845,42 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-2">
                   <button
                     onClick={handleSaveSpj}
                     disabled={isSaving}
-                    className="flex justify-center items-center gap-1.5 bg-[#CC0000] hover:bg-red-700 text-white rounded-lg py-2.5 px-4 font-bold text-xs shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                    className="w-full flex justify-center items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg py-2.5 px-4 font-bold text-xs shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {isSaving ? (
                       <RefreshCw className="w-4 h-4 animate-spin" />
                     ) : (
                       <Save className="w-4 h-4" />
                     )}
-                    {isSaving ? 'Menyimpan...' : 'Simpan SPJ'}
+                    {isSaving ? 'Menyimpan Perubahan...' : 'Simpan Data SPJ ke Database'}
                   </button>
 
-                  <button
-                    onClick={handlePrint}
-                    className="flex justify-center items-center gap-1.5 border border-[#CC0000] text-[#CC0000] hover:bg-red-50/50 rounded-lg py-2.5 px-4 font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    <Printer className="w-4 h-4" />
-                    Cetak / Simpan PDF
-                  </button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleSavePDF}
+                      disabled={isGeneratingPdf}
+                      className="flex justify-center items-center gap-1.5 bg-[#CC0000] hover:bg-red-700 text-white rounded-lg py-2.5 px-3 font-bold text-xs shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      {isGeneratingPdf ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      {isGeneratingPdf ? 'Membuat PDF...' : 'Unduh File PDF'}
+                    </button>
+
+                    <button
+                      onClick={handlePrint}
+                      className="flex justify-center items-center gap-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg py-2.5 px-3 font-bold text-xs transition-all cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Cetak Langsung
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
