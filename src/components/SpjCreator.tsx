@@ -524,26 +524,35 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
   );
 
   const renderFooterStripping = () => (
-    <div className="relative overflow-visible w-full text-left">
-      {/* Floating white circle with the red antenna-signal emblem on bottom right */}
-      <div className="absolute right-[18mm] bottom-[15px] w-[50px] h-[50px] flex items-center justify-center select-none overflow-visible z-20">
-        <div className="w-[44px] h-[44px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
+    <div className="relative overflow-visible w-full text-left font-montserrat">
+      {/* Floating white circle with the logo from drive */}
+      <div className="absolute right-[18mm] bottom-[4px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible z-20">
+        <div className="w-[54px] h-[54px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-200 overflow-hidden">
           {/* Logo image inside footer */}
-          <div className="w-[30px] h-[30px] flex items-center justify-center relative overflow-hidden">
-            <MetaraLogoSvg className="w-full h-full object-contain" />
+          <div className="w-[44px] h-[44px] flex items-center justify-center relative overflow-hidden">
+            <img 
+              src="https://lh3.googleusercontent.com/d/1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
+              alt="Metaranews Logo" 
+              className="w-full h-full object-contain pointer-events-none select-none"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
+              onError={(e) => {
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu";
+              }}
+            />
           </div>
         </div>
       </div>
 
       {/* Solid bottom Red strip bar */}
-      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[18mm] relative z-10 text-white font-sans text-[8px] tracking-wide font-medium">
+      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[18mm] relative z-10 text-white font-montserrat text-[10px] tracking-widest font-extrabold shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <Instagram className="w-3.5 h-3.5 stroke-2" />
-            <Facebook className="w-3.5 h-3.5 stroke-2" />
-            <Youtube className="w-3.5 h-3.5 stroke-2" />
+          <div className="flex gap-2">
+            <Instagram className="w-4 h-4 stroke-[2.5]" />
+            <Facebook className="w-4 h-4 stroke-[2.5]" />
+            <Youtube className="w-4 h-4 stroke-[2.5]" />
           </div>
-          <span className="font-extrabold uppercase tracking-widest text-[8px]">METARANEWS</span>
+          <span className="font-extrabold uppercase tracking-widest text-[9.5px]">METARANEWS</span>
         </div>
       </div>
     </div>

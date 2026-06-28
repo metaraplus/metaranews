@@ -13,7 +13,10 @@ import {
   Coins, 
   AlertCircle, 
   Check, 
-  RefreshCw 
+  RefreshCw,
+  Instagram,
+  Facebook,
+  Youtube
 } from 'lucide-react';
 import { Quotation, QuotationItem } from '../types';
 import { db, collection, getDocs, setDoc, doc, deleteDoc } from '../firebase';
@@ -463,26 +466,37 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
   );
 
   const renderFooterStripping = () => (
-    <div className="relative overflow-visible w-full">
-      {/* Tiny signal antenna tower logo printed in the lower right bottom corner exactly like image */}
-      <div className="absolute right-[18mm] bottom-[15px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible">
-        <div className="w-[48px] h-[48px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-100 overflow-hidden">
+    <div className="relative overflow-visible w-full text-left font-montserrat">
+      {/* Floating white circle with the logo from drive */}
+      <div className="absolute right-[18mm] bottom-[4px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible z-20">
+        <div className="w-[54px] h-[54px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-200 overflow-hidden">
           {/* Logo image inside footer */}
-          <div className="w-[32px] h-[32px] flex items-center justify-center relative overflow-hidden">
+          <div className="w-[44px] h-[44px] flex items-center justify-center relative overflow-hidden">
             <img 
-              src="https://lh3.googleusercontent.com/d/1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA" 
+              src="https://lh3.googleusercontent.com/d/1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
               alt="Metaranews Logo" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain pointer-events-none select-none"
               referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
               onError={(e) => {
-                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1kwvd_i_n0IWw59fxQEnVD36mqEp7n1iA";
+                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu";
               }}
             />
           </div>
         </div>
       </div>
-      {/* Bottom Red strip band matching attached picture */}
-      <div className="w-full h-8 bg-[#E7312F]"></div>
+
+      {/* Solid bottom Red strip bar */}
+      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[18mm] relative z-10 text-white font-montserrat text-[10px] tracking-widest font-extrabold shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <Instagram className="w-4 h-4 stroke-[2.5]" />
+            <Facebook className="w-4 h-4 stroke-[2.5]" />
+            <Youtube className="w-4 h-4 stroke-[2.5]" />
+          </div>
+          <span className="font-extrabold uppercase tracking-widest text-[9.5px]">METARANEWS</span>
+        </div>
+      </div>
     </div>
   );
 
