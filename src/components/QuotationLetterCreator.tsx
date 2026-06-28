@@ -327,20 +327,6 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
     }
   };
 
-  // Trigger quick sample reset
-  const handleLoadSamplePreset = () => {
-    if (!selectedQuote) return;
-    if (window.confirm('Muat ulang isi surat ini dengan preset contoh instan? Artikel & rincian saat ini akan diganti.')) {
-      const resetQuote: Quotation = {
-        ...dummyQuotationPreset,
-        id: selectedQuote.id // Keep the current ID
-      };
-      setSelectedQuote(resetQuote);
-      const updated = quotations.map(q => q.id === selectedQuote.id ? resetQuote : q);
-      persistList(updated);
-    }
-  };
-
   // Handle nested updates for selectedQuote
   const updateField = (key: keyof Quotation, val: any) => {
     if (!selectedQuote) return;
@@ -605,14 +591,6 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                 <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md font-mono">ID: {selectedQuote.id}</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={handleLoadSamplePreset}
-                  className="px-3 py-1.5 border border-slate-200 hover:border-slate-350 bg-white text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1 leading-none select-none"
-                  title="Ganti isian saat ini dengan sampel default"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Reload Contoh</span>
-                </button>
                 <button
                   type="button"
                   onClick={handleSaveQuotation}
