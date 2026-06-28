@@ -959,12 +959,12 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
               >
                 
                 {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
-                <div className="hidden print:block fixed top-0 left-0 w-[210mm] h-[45mm] pt-[2cm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none">
+                <div className="hidden print:block fixed top-[1.25cm] left-0 w-[210mm] h-[45mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none">
                   {renderKopSurat()}
                 </div>
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
-                <div className="hidden print:block fixed bottom-0 left-0 w-[210mm] h-[15mm] pb-[0.25cm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none">
+                <div className="hidden print:block fixed bottom-[1.25cm] left-0 w-[210mm] h-[15mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none">
                   {renderFooterStripping()}
                 </div>
 
@@ -1151,7 +1151,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                   <tfoot>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        <div className="hidden print:block h-[15mm] w-full" />
+                        <div className="hidden print:block h-[25mm] w-full" />
                       </td>
                     </tr>
                   </tfoot>
