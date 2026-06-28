@@ -57,10 +57,16 @@
     /* Absolute A4 print alignment */
     #print-section {
       display: block !important;
-      position: relative !important;
-      width: 100% !important;
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
       margin: 0 !important;
-      padding: 0 !important;
+      padding-top: 2cm !important;
+      padding-bottom: 0.25cm !important;
+      padding-left: 2.54cm !important;
+      padding-right: 2.54cm !important;
       box-sizing: border-box !important;
       background: white !important;
       border: none !important;
@@ -71,10 +77,7 @@
     /* Force page dimensions for A4 */
     @page {
       size: A4;
-      margin-top: 2cm;
-      margin-bottom: 0.25cm;
-      margin-left: 2.54cm;
-      margin-right: 2.54cm;
+      margin: 0;
     }
   }
 }
