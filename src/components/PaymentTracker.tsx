@@ -206,8 +206,15 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
       // Date
       let matchDate = true;
       if (selectedMonth && selectedMonth !== 'all') {
-        // If selectedMonth is active, filter by paymentDate (tanggal dana masuk)
-        matchDate = !!s.paymentDate && s.paymentDate.startsWith(selectedMonth);
+        // If selectedMonth is active, show:
+        // 1. Invoices paid in this selected month
+        const paidInThisMonth = s.paymentStatus === 'Lunas' && !!s.paymentDate && s.paymentDate.startsWith(selectedMonth);
+        // 2. Invoices created/issued in this selected month
+        const createdInThisMonth = s.date && s.date.startsWith(selectedMonth);
+        // 3. Invoices that are still unpaid (Belum Lunas) must always show in the current/running month view
+        const isUnpaid = (s.paymentStatus || 'Belum Lunas') !== 'Lunas';
+        
+        matchDate = paidInThisMonth || createdInThisMonth || isUnpaid;
       } else {
         matchDate = selectedYearMonth === 'Semua' || s.date.startsWith(selectedYearMonth);
       }
