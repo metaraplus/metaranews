@@ -223,6 +223,8 @@ export default function ManagementPanel({
                 <option value="Fotografer">Fotografer (Dokumentasi)</option>
                 <option value="Kontributor">Kontributor (Eksternal)</option>
                 <option value="Magang">Magang (Intern)</option>
+                <option value="Pimpinan Redaksi">Pimpinan Redaksi</option>
+                <option value="Tidak Ada">Tidak Ada</option>
               </select>
               <button
                 type="submit"
@@ -266,6 +268,8 @@ export default function ManagementPanel({
                         <option value="Fotografer">Fotografer</option>
                         <option value="Kontributor">Kontributor</option>
                         <option value="Magang">Magang</option>
+                        <option value="Pimpinan Redaksi">Pimpinan Redaksi</option>
+                        <option value="Tidak Ada">Tidak Ada</option>
                       </select>
                     </div>
                     {editingJError && <p className="text-[10px] font-bold text-red-600 mt-1">{editingJError}</p>}

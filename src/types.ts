@@ -20,7 +20,7 @@ export interface Article {
 export interface Journalist {
   id: string;
   name: string;
-  role: 'Reporter' | 'Redaktur' | 'Fotografer' | 'Kontributor' | 'Magang';
+  role: 'Reporter' | 'Redaktur' | 'Fotografer' | 'Kontributor' | 'Magang' | 'Pimpinan Redaksi' | 'Tidak Ada';
   coverage?: string;
 }
 
