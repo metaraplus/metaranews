@@ -70,7 +70,11 @@ export default function App() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   // --- Active Tab State ---
-  const [selectedMonth, setSelectedMonth] = useState('2026-06'); // Default to current mock month
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}`;
+  }); // Default to current month
   const [activeTab, setActiveTab] = useState<'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda' | 'pembayaran' | 'pengeluaran'>('laporan');
   const [isArticleModalOpen, setIsArticleModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
@@ -629,6 +633,11 @@ export default function App() {
       localStorage.setItem('metaranews_current_user', JSON.stringify(found));
       setLoginUsername('');
       setLoginPassword('');
+      
+      // Otomatis set bulan laporan ke bulan saat ini setelah login
+      const d = new Date();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      setSelectedMonth(`${d.getFullYear()}-${mm}`);
     } else {
       setLoginError('Username atau password salah.');
     }
