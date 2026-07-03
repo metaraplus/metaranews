@@ -768,7 +768,7 @@ export default function App() {
 
           {/* TESTING PRESETS HELPER */}
           <div className="border-t border-slate-100 pt-4 space-y-2">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">PRESET INSTAN UNTUK PENGUJI (TESTER):</span>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">PILIH PROFIL:</span>
             <div className="grid grid-cols-1 gap-1.5 text-[11px] leading-tight text-slate-600 font-medium font-sans max-h-60 overflow-y-auto pr-1">
               {personnels.map((p) => {
                 const getRoleColor = (role: string) => {
@@ -788,10 +788,11 @@ export default function App() {
                     type="button"
                     onClick={() => { 
                       setLoginUsername(p.username); 
-                      setLoginPassword(p.password || ''); 
+                      setLoginPassword(''); 
+                      setLoginError('');
                     }}
                     className="text-left p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-150 transition-all flex justify-between items-center cursor-pointer group"
-                    title={`Klik untuk otomatis mengisi kredensial ${p.fullName}`}
+                    title={`Klik untuk memilih profil ${p.fullName}`}
                   >
                     <div>
                       <strong className="text-slate-750 block font-bold group-hover:text-sky-600 transition-colors">
