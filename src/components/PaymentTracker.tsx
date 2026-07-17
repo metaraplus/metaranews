@@ -52,11 +52,12 @@ const formatRupiah = (num: number): string => {
 };
 
 interface PaymentTrackerProps {
-  onNavigateToTab: (tab: 'spj') => void;
+  onNavigateToTab: (tab: 'laporan' | 'berita' | 'sistem' | 'personil' | 'surat' | 'spj' | 'agenda' | 'pembayaran' | 'pengeluaran') => void;
   selectedMonth?: string;
+  currentUserRole?: 'Admin' | 'Manager' | 'Staff';
 }
 
-export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' }: PaymentTrackerProps) {
+export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all', currentUserRole }: PaymentTrackerProps) {
   const [spjs, setSpjs] = useState<Spj[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -130,6 +131,10 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
 
   // Set form fields when editing is triggered
   const startEditing = (spj: Spj) => {
+    if (currentUserRole === 'Staff') {
+      alert("Akses ditolak: Staff tidak memiliki akses untuk menginput atau mengubah rincian pembayaran.");
+      return;
+    }
     setEditingSpj(spj);
     setPaymentDate(spj.paymentDate || new Date().toISOString().split('T')[0]);
     setPaymentStatus(spj.paymentStatus || 'Belum Lunas');
@@ -146,6 +151,10 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
 
   // Save payment details to state, localStorage, and Firestore
   const handleSavePayment = async () => {
+    if (currentUserRole === 'Staff') {
+      alert("Akses ditolak: Staff tidak memiliki akses untuk menginput atau mengubah rincian pembayaran.");
+      return;
+    }
     if (!editingSpj) return;
     setIsSaving(true);
 
@@ -560,7 +569,7 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
                   <th className="py-3.5 px-3 text-center">Status</th>
                   <th className="py-3.5 px-3">Tanggal Bayar</th>
                   <th className="py-3.5 px-3">Marketing &amp; Fee</th>
-                  <th className="py-3.5 px-4 text-center">Aksi</th>
+                  {currentUserRole !== 'Staff' && <th className="py-3.5 px-4 text-center">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -671,18 +680,20 @@ export default function PaymentTracker({ onNavigateToTab, selectedMonth = 'all' 
                       </td>
 
                       {/* 7. ACTIONS */}
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => startEditing(s)}
-                            className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-800 font-bold rounded-xl text-[10px] flex items-center gap-0.5 transition-colors cursor-pointer whitespace-nowrap"
-                            title="Input rincian tanggal bayar dan fee marketing"
-                          >
-                            <Edit3 className="w-3 h-3" />
-                            <span>Input Bayar</span>
-                          </button>
-                        </div>
-                      </td>
+                      {currentUserRole !== 'Staff' && (
+                        <td className="py-4 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => startEditing(s)}
+                              className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-sky-700 hover:text-sky-800 font-bold rounded-xl text-[10px] flex items-center gap-0.5 transition-colors cursor-pointer whitespace-nowrap"
+                              title="Input rincian tanggal bayar dan fee marketing"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Input Bayar</span>
+                            </button>
+                          </div>
+                        </td>
+                      )}
 
                     </tr>
                   );

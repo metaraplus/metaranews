@@ -95,7 +95,10 @@ export default function ArticleList({
 
     // 3. Category Filter
     if (selectedCat !== 'all') {
-      result = result.filter(a => a.category === selectedCat);
+      result = result.filter(a => {
+        if (!a.category) return false;
+        return a.category.split(',').includes(selectedCat);
+      });
     }
 
     // 4. Type Filter ("Karya Sendiri" vs "Rilis")
@@ -282,23 +285,28 @@ export default function ArticleList({
                     </td>
 
                     {/* Category column */}
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {(() => {
-                        const styleInfo = getBadgeStyleAndClass(article.category);
-                        return (
-                          <span 
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${styleInfo.className}`}
-                            style={styleInfo.style}
-                          >
-                            {categoryObj 
-                              ? (categoryObj.rubricName 
-                                  ? `${categoryObj.rubricName} > ${categoryObj.categoryName}`
-                                  : categoryObj.name)
-                              : article.category
-                            }
-                          </span>
-                        );
-                      })()}
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap gap-1 max-w-[180px]">
+                        {article.category ? article.category.split(',').map((catId, idx) => {
+                          const catObj = categoryMap[catId];
+                          const styleInfo = getBadgeStyleAndClass(catId);
+                          return (
+                            <span 
+                              key={`${catId}-${idx}`}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-block whitespace-nowrap ${styleInfo.className}`}
+                              style={styleInfo.style}
+                              title={catObj ? (catObj.rubricName ? `[${catObj.rubricName}] ${catObj.categoryName}` : catObj.name) : catId}
+                            >
+                              {catObj 
+                                ? (catObj.categoryName || catObj.name)
+                                : catId
+                              }
+                            </span>
+                          );
+                        }) : (
+                          <span className="text-[10px] text-slate-400 font-semibold italic">Tidak ada</span>
+                        )}
+                      </div>
                     </td>
 
                     {/* News Type column */}

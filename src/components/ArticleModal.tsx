@@ -194,22 +194,70 @@ export default function ArticleModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Category selection */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700 block">
-                Kategori Berita <span className="text-red-500">*</span>
+                Kategori Berita (Bisa pilih lebih dari 1) <span className="text-red-500">*</span>
               </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-hidden focus:border-sky-600 focus:ring-1 focus:ring-sky-600 transition-all text-slate-900 font-medium"
-                id="input-article-category"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.rubricName ? `[${cat.rubricName}] ${cat.categoryName}` : cat.name}
-                  </option>
-                ))}
-              </select>
+              <div className="border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto bg-white grid grid-cols-1 gap-2" id="categories-checklist">
+                {categories.map((cat) => {
+                  const isChecked = category ? category.split(',').includes(cat.id) : false;
+                  return (
+                    <label 
+                      key={cat.id} 
+                      className={`flex items-center gap-2 p-2 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none ${
+                        isChecked 
+                          ? 'bg-sky-50/70 border-sky-300 text-sky-850 shadow-2xs' 
+                          : 'border-slate-100 hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const currentCats = category ? category.split(',').filter(Boolean) : [];
+                          let nextCats: string[];
+                          if (e.target.checked) {
+                            nextCats = [...currentCats, cat.id];
+                          } else {
+                            nextCats = currentCats.filter(id => id !== cat.id);
+                          }
+                          setCategory(nextCats.join(','));
+                        }}
+                        className="rounded-sm border-slate-300 text-sky-600 focus:ring-sky-500 cursor-pointer"
+                      />
+                      <span className="truncate">
+                        {cat.rubricName ? `[${cat.rubricName}] ${cat.categoryName}` : cat.name}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {category && category.split(',').filter(Boolean).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  <span className="text-[10px] text-slate-400 font-bold self-center mr-1">Terpilih:</span>
+                  {category.split(',').filter(Boolean).map(catId => {
+                    const catObj = categories.find(c => c.id === catId);
+                    return (
+                      <span 
+                        key={catId} 
+                        className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-[10px] font-bold"
+                      >
+                        {catObj ? (catObj.categoryName || catObj.name) : catId}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextCats = category.split(',').filter(id => id !== catId);
+                            setCategory(nextCats.join(','));
+                          }}
+                          className="text-slate-400 hover:text-slate-600 focus:outline-hidden font-extrabold cursor-pointer ml-0.5"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* News Type selection */}

@@ -25,6 +25,7 @@ import {
 
 interface ExpenditureTrackerProps {
   selectedMonth?: string;
+  currentUserRole?: 'Admin' | 'Manager' | 'Staff';
 }
 
 const CATEGORIES = [
@@ -36,7 +37,7 @@ const CATEGORIES = [
   'Lain-lain'
 ];
 
-export default function ExpenditureTracker({ selectedMonth = 'all' }: ExpenditureTrackerProps) {
+export default function ExpenditureTracker({ selectedMonth = 'all', currentUserRole }: ExpenditureTrackerProps) {
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -129,6 +130,10 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
   // Form submit (Create or Update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentUserRole === 'Staff') {
+      alert("Akses ditolak: Staff tidak memiliki akses untuk menambah atau mengubah pengeluaran.");
+      return;
+    }
     if (!date || !category || !amount || !description) {
       alert("Harap lengkapi semua field yang wajib diisi.");
       return;
@@ -173,6 +178,10 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
   };
 
   const handleEdit = (exp: Expenditure) => {
+    if (currentUserRole === 'Staff') {
+      alert("Akses ditolak: Staff tidak memiliki akses untuk menambah atau mengubah pengeluaran.");
+      return;
+    }
     setEditingId(exp.id);
     setDate(exp.date);
     setCategory(exp.category);
@@ -184,6 +193,10 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
   };
 
   const handleDelete = async (id: string) => {
+    if (currentUserRole === 'Staff') {
+      alert("Akses ditolak: Staff tidak memiliki akses untuk menghapus pengeluaran.");
+      return;
+    }
     if (!window.confirm("Apakah Anda yakin ingin menghapus data pengeluaran ini?")) {
       return;
     }
@@ -290,19 +303,25 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-xs flex flex-row items-center justify-end">
-          <button
-            onClick={() => {
-              if (showForm) {
-                resetForm();
-              } else {
-                setShowForm(true);
-              }
-            }}
-            className="w-full md:w-auto bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-5 py-3 rounded-xl shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            <span>{showForm ? 'Batal / Tutup Form' : 'Input Pengeluaran Baru'}</span>
-          </button>
+          {currentUserRole !== 'Staff' ? (
+            <button
+              onClick={() => {
+                if (showForm) {
+                  resetForm();
+                } else {
+                  setShowForm(true);
+                }
+              }}
+              className="w-full md:w-auto bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-5 py-3 rounded-xl shadow-md shadow-rose-500/10 hover:shadow-rose-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              <span>{showForm ? 'Batal / Tutup Form' : 'Input Pengeluaran Baru'}</span>
+            </button>
+          ) : (
+            <span className="text-xs text-slate-400 font-bold italic flex items-center gap-1">
+              🔒 Akses Input Terbatas (Staff)
+            </span>
+          )}
         </div>
       </div>
 
@@ -506,7 +525,7 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
                   <th className="py-4 px-4">Keterangan</th>
                   <th className="py-4 px-4">Catatan</th>
                   <th className="py-4 px-4 w-40 text-right">Jumlah</th>
-                  <th className="py-4 px-6 w-24 text-center">Aksi</th>
+                  {currentUserRole !== 'Staff' && <th className="py-4 px-6 w-24 text-center">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 text-xs font-semibold text-slate-700">
@@ -548,24 +567,26 @@ export default function ExpenditureTracker({ selectedMonth = 'all' }: Expenditur
                       <td className="py-3 px-4 text-right font-mono font-bold text-slate-950">
                         {formatRupiah(e.amount)}
                       </td>
-                      <td className="py-3 px-6 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(e)}
-                            className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
-                            title="Edit"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(e.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                            title="Hapus"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
+                      {currentUserRole !== 'Staff' && (
+                        <td className="py-3 px-6 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(e)}
+                              className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(e.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

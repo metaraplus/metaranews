@@ -1410,7 +1410,7 @@ export default function App() {
                 </p>
               </div>
 
-              <PaymentTracker onNavigateToTab={(tab) => setActiveTab(tab)} selectedMonth={selectedMonth} />
+              <PaymentTracker onNavigateToTab={(tab) => setActiveTab(tab)} selectedMonth={selectedMonth} currentUserRole={currentUser?.role} />
             </div>
           )}
 
@@ -1427,7 +1427,7 @@ export default function App() {
                 </p>
               </div>
 
-              <ExpenditureTracker selectedMonth={selectedMonth} />
+              <ExpenditureTracker selectedMonth={selectedMonth} currentUserRole={currentUser?.role} />
             </div>
           )}
 
