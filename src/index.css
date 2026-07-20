@@ -36,15 +36,37 @@
 
     /* Explicitly hide non-printed elements */
     .no-print-element, 
+    #nav-masthead,
+    #dashboard-controls-section,
+    #dashboard-footer,
     #spj-sidebar-panel,
+    #spj-editor-inputs-panel,
+    #quotations-side-manager,
+    #quote-editor-form-panel,
     button,
     nav,
-    header {
+    header,
+    footer {
       display: none !important;
     }
 
     /* Strip down wrapping parents to avoid container clipping or scroll constraint collapse */
-    #root, #root > div, main, div:has(#print-section) {
+    #root, 
+    #root > div, 
+    #applet-viewport,
+    #dashboard-content-tabs-section,
+    #dashboard-content-tabs-section > div,
+    #spj-tab-view,
+    #spj-tabs-container,
+    #spj-editor-preview-grid,
+    #spj-live-preview-box,
+    #spj-live-preview-container,
+    #surat-tab-view,
+    #surat-penawaran-creator-root,
+    #quotations-inputs-preview-workspace,
+    #quote-live-preview-container,
+    main, 
+    div:has(#print-section) {
       margin: 0 !important;
       padding: 0 !important;
       border: none !important;
@@ -52,6 +74,8 @@
       overflow: visible !important;
       height: auto !important;
       min-height: auto !important;
+      max-width: none !important;
+      width: auto !important;
       background: transparent !important;
     }
 
