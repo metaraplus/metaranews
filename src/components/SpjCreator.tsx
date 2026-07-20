@@ -447,6 +447,10 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           print-color-adjust: exact !important;
         }
         #print-section {
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
+          position: relative !important;
           width: 210mm !important;
           min-height: 297mm !important;
           padding-top: 2cm !important;
@@ -459,6 +463,10 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           box-shadow: none !important;
           border: none !important;
         }
+        #print-section, #print-section * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
         .no-print-element {
           display: none !important;
         }
@@ -470,8 +478,8 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
     doc.write('</body></html>');
     doc.close();
 
-    // 3. Wait for image files and styling layers to fully execute, then print
-    setTimeout(() => {
+    // 3. Wait for all resources (images and fonts) inside the iframe to load before printing
+    const runPrint = () => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
@@ -486,7 +494,37 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           }
         }, 1500);
       }
-    }, 500);
+    };
+
+    const iframeWindow = iframe.contentWindow;
+    const iframeDoc = iframeWindow?.document;
+    if (iframeWindow && iframeDoc) {
+      // Create loading promises for all images in the iframe document
+      const images = Array.from(iframeDoc.images);
+      const imagePromises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve; // Always resolve to avoid blocking print
+        });
+      });
+
+      // Wait for font loading promise
+      const fontsPromise = (iframeWindow as any).document?.fonts?.ready || Promise.resolve();
+
+      // Setup a max race timeout of 1800ms to guarantee responsive printing fallback
+      const maxTimeoutPromise = new Promise(resolve => setTimeout(resolve, 1800));
+
+      Promise.race([
+        Promise.all([...imagePromises, fontsPromise]),
+        maxTimeoutPromise
+      ]).then(() => {
+        runPrint();
+      });
+    } else {
+      // Fallback fallback if window initialized poorly
+      setTimeout(runPrint, 500);
+    }
   };
 
   const renderKopSurat = () => (
@@ -495,14 +533,11 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       <div className="flex items-center">
         <div className="w-[145px] h-[90px] flex items-center justify-start shrink-0">
           <img 
-            src="https://lh3.googleusercontent.com/d/1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
+            src="https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
             alt="Metara Logo" 
             className="w-full h-full object-contain object-left pointer-events-none select-none"
             referrerPolicy="no-referrer"
             crossOrigin="anonymous"
-            onError={(e) => {
-              e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu";
-            }}
           />
         </div>
       </div>
@@ -534,14 +569,11 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
           {/* Logo image inside footer */}
           <div className="w-[44px] h-[44px] flex items-center justify-center relative overflow-hidden">
             <img 
-              src="https://lh3.googleusercontent.com/d/1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
+              src="https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu" 
               alt="Metaranews Logo" 
               className="w-full h-full object-contain pointer-events-none select-none"
               referrerPolicy="no-referrer"
               crossOrigin="anonymous"
-              onError={(e) => {
-                e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1EZpDezU860yP2uRbiPDugS8yjP5GP-Xu";
-              }}
             />
           </div>
         </div>
@@ -1113,14 +1145,11 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                               
                               {showSignatureStamp && (
                                 <img 
-                                  src="https://lh3.googleusercontent.com/d/1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf" 
+                                  src="https://docs.google.com/uc?export=download&id=1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf" 
                                   alt="Tanda Tangan & Pengesahan" 
                                   className="absolute h-[168px] max-w-none object-contain pointer-events-none select-none mix-blend-multiply z-30 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                                   referrerPolicy="no-referrer"
                                   crossOrigin="anonymous"
-                                  onError={(e) => {
-                                    e.currentTarget.src = "https://docs.google.com/uc?export=download&id=1OfIPF_BA2X7qI1LSKJZTF3Wv-NKGedmf";
-                                  }}
                                 />
                               )}
 
