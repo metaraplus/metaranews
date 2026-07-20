@@ -995,12 +995,18 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
               >
                 
                 {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
-                <div className="hidden print:block fixed top-[1.25cm] left-0 w-[210mm] h-[26mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none">
+                <div 
+                  className="hidden print:block fixed top-[2cm] w-[210mm] h-[26mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none"
+                  style={{ left: '50%', transform: 'translateX(-50%)' }}
+                >
                   {renderKopSurat()}
                 </div>
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
-                <div className="hidden print:block fixed bottom-[1.25cm] left-0 w-[210mm] h-[15mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none">
+                <div 
+                  className="hidden print:block fixed bottom-[0px] w-[210mm] h-[15mm] bg-white z-[100] pointer-events-none"
+                  style={{ left: '50%', transform: 'translateX(-50%)' }}
+                >
                   {renderFooterStripping()}
                 </div>
 
