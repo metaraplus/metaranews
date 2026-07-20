@@ -849,8 +849,8 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
         ) : null}
 
         {/* 3. RIGHT PANEL: LIVE PREVIEW LAYOUT WITH PRINT SIMULATION */}
-        <div className="space-y-4 no-print-element text-left w-full" id="spj-live-preview-box">
-          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block">
+        <div className="space-y-4 text-left w-full" id="spj-live-preview-box">
+          <span className="text-xs font-black uppercase tracking-widest text-slate-400 text-left block no-print-element">
             Pratinjau Hasil Cetak Lembar A4 (Live Preview)
           </span>
           <div className="flex flex-col items-center justify-start bg-slate-200/50 rounded-2xl border border-slate-250 p-4 md:p-8 overflow-x-auto min-h-[700px] w-full" id="spj-live-preview-container">

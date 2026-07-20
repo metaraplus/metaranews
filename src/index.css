@@ -52,6 +52,7 @@
       overflow: visible !important;
       height: auto !important;
       min-height: auto !important;
+      background: transparent !important;
     }
 
     /* Absolute A4 print alignment */
