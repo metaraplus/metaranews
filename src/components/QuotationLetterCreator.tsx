@@ -1190,11 +1190,6 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                             </div>
                           </div>
 
-                          {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
-                          <div className="print:hidden mt-14 relative overflow-visible -mx-[1.27cm]">
-                            {renderFooterStripping()}
-                          </div>
-
                         </div>
                       </td>
                     </tr>
@@ -1204,11 +1199,16 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                   <tfoot>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        <div className="hidden print:block h-[15mm] w-full" />
+                        <div className="h-[15mm] w-full" />
                       </td>
                     </tr>
                   </tfoot>
                 </table>
+
+                {/* --- SCREEN-ONLY FOOTER (Sticks to bottom of A4 card on screen) --- */}
+                <div className="print:hidden absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                  {renderFooterStripping()}
+                </div>
 
               </div>
 
