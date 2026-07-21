@@ -433,14 +433,14 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       </div>
       
       {/* Decorative vertical red block on the right edge */}
-      <div className="absolute top-[-2cm] right-[-2.54cm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
+      <div className="absolute top-[-1.27cm] right-[-1.27cm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
     </div>
   );
 
   const renderFooterStripping = () => (
     <div className="relative overflow-visible w-full text-left font-montserrat">
       {/* Floating white circle with the logo from drive */}
-      <div className="absolute right-[2.54cm] bottom-[4px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible z-20">
+      <div className="absolute right-[1.27cm] bottom-[4px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible z-20">
         <div className="w-[54px] h-[54px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-200 overflow-hidden">
           {/* Logo image inside footer */}
           <div className="w-[44px] h-[44px] flex items-center justify-center relative overflow-hidden">
@@ -458,7 +458,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
       </div>
 
       {/* Solid bottom Red strip bar */}
-      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[2.54cm] relative z-10 text-white font-montserrat text-[10px] tracking-widest font-extrabold shadow-sm">
+      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[1.27cm] relative z-10 text-white font-montserrat text-[10px] tracking-widest font-extrabold shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex gap-2">
             <Instagram className="w-4 h-4 stroke-[2.5]" />
@@ -945,11 +945,11 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                             <table className="w-full border-collapse border border-slate-200 text-xs text-left text-slate-800 font-sans">
                               <thead>
                                 <tr className="bg-[#851D1D] text-white font-black text-center text-[10px] uppercase tracking-wider">
-                                  <th className="border border-slate-200 py-[11px] px-3 w-[45%] text-left font-extrabold">DESKRIPSI</th>
-                                  <th className="border border-slate-200 py-[11px] px-2 w-[11%] font-extrabold">QTY</th>
-                                  <th className="border border-slate-200 py-[11px] px-2 w-[18%] font-extrabold">PERIODE TAYANG</th>
-                                  <th className="border border-slate-200 py-[11px] px-3 w-[23%] text-center font-extrabold">HARGA</th>
-                                  <th className="border border-slate-200 py-[11px] px-3 w-[23%] text-right font-extrabold">TOTAL</th>
+                                  <th className="border border-slate-200 py-[11px] px-3 w-[40%] text-left font-extrabold">DESKRIPSI</th>
+                                  <th className="border border-slate-200 py-[11px] px-2 w-[10%] font-extrabold">QTY</th>
+                                  <th className="border border-slate-200 py-[11px] px-2 w-[15%] font-extrabold">PERIODE TAYANG</th>
+                                  <th className="border border-slate-200 py-[11px] px-3 w-[15%] text-center font-extrabold">HARGA</th>
+                                  <th className="border border-slate-200 py-[11px] px-3 w-[20%] text-right font-extrabold">TOTAL</th>
                                 </tr>
                               </thead>
                               <tbody>
