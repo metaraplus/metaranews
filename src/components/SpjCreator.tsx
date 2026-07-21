@@ -863,14 +863,14 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
             <div className="relative shadow-2xl overflow-visible mb-6 shrink-0 bg-white">
               {/* Actual paper dimensions structured in CSS */}
               <div 
-                id="print-section"
-                className="w-[210mm] min-h-[297mm] bg-white text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between print:block shrink-0 pt-[2cm] pb-[0.25cm] pl-[2.54cm] pr-[2.54cm] relative"
+                id="print-section-spj"
+                className="w-[210mm] min-h-[297mm] bg-white text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between print:block shrink-0 pt-[1.27cm] pb-[1.27cm] pl-[1.27cm] pr-[1.27cm] relative"
                 style={{ contentVisibility: 'auto' }}
               >
                 
                 {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
                 <div 
-                  className="hidden print:block fixed top-[2cm] w-[210mm] h-[26mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none"
+                  className="hidden print:block fixed top-[1.27cm] w-[210mm] h-[26mm] pl-[1.27cm] pr-[1.27cm] bg-white z-[100] pointer-events-none"
                   style={{ left: '50%', transform: 'translateX(-50%)' }}
                 >
                   {renderKopSurat()}
@@ -878,7 +878,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
                 <div 
-                  className="hidden print:block fixed bottom-[0px] w-[210mm] h-[15mm] bg-white z-[100] pointer-events-none"
+                  className="hidden print:block fixed bottom-[0px] w-[210mm] h-[15mm] pl-[1.27cm] pr-[1.27cm] bg-white z-[100] pointer-events-none"
                   style={{ left: '50%', transform: 'translateX(-50%)' }}
                 >
                   {renderFooterStripping()}
@@ -890,7 +890,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                   <thead>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        <div className="hidden print:block h-[24mm] w-full" />
+                        <div className="hidden print:block h-[26mm] w-full" />
                       </td>
                     </tr>
                   </thead>
@@ -1053,7 +1053,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                           </div>
 
                           {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
-                          <div className="print:hidden mt-14 relative overflow-visible -mx-[2.54cm]">
+                          <div className="print:hidden mt-14 relative overflow-visible -mx-[1.27cm]">
                             {renderFooterStripping()}
                           </div>
 
@@ -1066,7 +1066,7 @@ export default function SpjCreator({ selectedMonth = 'all' }: SpjCreatorProps) {
                   <tfoot>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        <div className="hidden print:block h-[25mm] w-full" />
+                        <div className="hidden print:block h-[15mm] w-full" />
                       </td>
                     </tr>
                   </tfoot>
