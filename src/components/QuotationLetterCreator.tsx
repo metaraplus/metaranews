@@ -1048,7 +1048,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                           </div>
 
                           {/* --- DOCUMENT INFORMATION HEADER (No Surat, Lampiran, Hal) --- */}
-                          <div className="mt-8 grid grid-cols-12 gap-2 text-xs relative z-10 text-slate-800">
+                          <div className="mt-8 grid grid-cols-12 gap-2 text-[16px] relative z-10 text-slate-800">
                             <div className="col-span-8 space-y-1">
                               <div className="flex">
                                 <span className="w-20 font-bold block shrink-0 text-slate-600">Nomor</span>
@@ -1075,7 +1075,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                           </div>
 
                           {/* --- RECIPIENT BLOCK (Kepada Yth.) --- */}
-                          <div className="mt-7 text-xs space-y-1 text-slate-800 relative z-10 leading-relaxed max-w-[80%]">
+                          <div className="mt-7 text-[11px] space-y-1 text-slate-800 relative z-10 leading-relaxed max-w-[80%]">
                             <p className="font-semibold text-slate-500">Kepada Yang Terhormat,</p>
                             <p className="font-black text-slate-900 text-[13px]">{selectedQuote.recipientName}</p>
                             <p className="font-semibold text-slate-700">{selectedQuote.recipientTitle}</p>
@@ -1084,7 +1084,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                           </div>
 
                           {/* --- BODY OPENING --- */}
-                          <div className="mt-7 text-xs text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
+                          <div className="mt-7 text-[11px] text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
                             {selectedQuote.bodyOpening}
                           </div>
 
@@ -1144,13 +1144,13 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                           )}
 
                           {/* --- BODY CLOSING --- */}
-                          <div className="mt-6 text-xs text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
+                          <div className="mt-6 text-[11px] text-slate-800 text-justify relative z-10 leading-relaxed whitespace-pre-line font-sans">
                             {selectedQuote.bodyClosing}
                           </div>
 
                           {/* --- FOOTER BLOCK: SIGNATURE PANEL --- */}
                           <div className="mt-12 relative z-10">
-                            <div className="grid grid-cols-12 gap-4 text-xs font-sans text-slate-800">
+                            <div className="grid grid-cols-12 gap-4 text-[11px] font-sans text-slate-800">
                               <div className="col-span-7">
                                 {/* Optional notes area */}
                                 <p className="text-[10px] text-slate-400 font-medium italic block mt-1 leading-normal max-w-[85%]">
