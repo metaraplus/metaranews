@@ -460,14 +460,14 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
       </div>
 
       {/* Decorative vertical red block on the right edge */}
-      <div className="absolute top-[-2cm] right-[-2.54cm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
+      <div className="absolute top-[-1.27cm] right-[-1.27cm] w-[45px] h-[34mm] bg-[#E7312F] rounded-l-[18px]"></div>
     </div>
   );
 
   const renderFooterStripping = () => (
     <div className="relative overflow-visible w-full text-left font-montserrat">
       {/* Floating white circle with the logo from drive */}
-      <div className="absolute right-[2.54cm] bottom-[4px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible z-20">
+      <div className="absolute right-[1.27cm] bottom-[4px] w-[54px] h-[54px] flex items-center justify-center select-none overflow-visible z-20">
         <div className="w-[54px] h-[54px] rounded-full bg-white flex items-center justify-center shadow-xs border border-slate-200 overflow-hidden">
           {/* Logo image inside footer */}
           <div className="w-[44px] h-[44px] flex items-center justify-center relative overflow-hidden">
@@ -485,7 +485,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
       </div>
 
       {/* Solid bottom Red strip bar */}
-      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[2.54cm] relative z-10 text-white font-montserrat text-[10px] tracking-widest font-extrabold shadow-sm">
+      <div className="w-full h-8 bg-[#E7312F] flex items-center justify-start px-[1.27cm] relative z-10 text-white font-montserrat text-[10px] tracking-widest font-extrabold shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex gap-2">
             <Instagram className="w-4 h-4 stroke-[2.5]" />
@@ -992,13 +992,13 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
               {/* Actual paper dimensions structured in CSS */}
               <div 
                 id="print-section"
-                className="w-[210mm] min-h-[297mm] bg-white shadow-2xl pt-[2cm] pb-[0.25cm] pl-[2.54cm] pr-[2.54cm] relative text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between print:block shrink-0"
+                className="w-[210mm] min-h-[297mm] bg-white shadow-2xl pt-[1.27cm] pb-[1.27cm] pl-[1.27cm] pr-[1.27cm] relative text-slate-800 font-sans leading-relaxed tracking-normal select-text border border-white text-left flex flex-col justify-between print:block shrink-0"
                 style={{ contentVisibility: 'auto' }}
               >
                 
                 {/* --- REPEATING PRINT HEADER (Only visible on physical print pages, fixed top) --- */}
                 <div 
-                  className="hidden print:block fixed top-[2cm] w-[210mm] h-[26mm] pl-[2.54cm] pr-[2.54cm] bg-white z-[100] pointer-events-none"
+                  className="hidden print:block fixed top-[1.27cm] w-[210mm] h-[26mm] pl-[1.27cm] pr-[1.27cm] bg-white z-[100] pointer-events-none"
                   style={{ left: '50%', transform: 'translateX(-50%)' }}
                 >
                   {renderKopSurat()}
@@ -1006,7 +1006,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
 
                 {/* --- REPEATING PRINT FOOTER (Only visible on physical print pages, fixed bottom) --- */}
                 <div 
-                  className="hidden print:block fixed bottom-[0px] w-[210mm] h-[15mm] bg-white z-[100] pointer-events-none"
+                  className="hidden print:block fixed bottom-[0px] w-[210mm] h-[15mm] pl-[1.27cm] pr-[1.27cm] bg-white z-[100] pointer-events-none"
                   style={{ left: '50%', transform: 'translateX(-50%)' }}
                 >
                   {renderFooterStripping()}
@@ -1018,7 +1018,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                   <thead>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        <div className="hidden print:block h-[24mm] w-full" />
+                        <div className="hidden print:block h-[26mm] w-full" />
                       </td>
                     </tr>
                   </thead>
@@ -1191,7 +1191,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                           </div>
 
                           {/* SCREEN-ONLY (Live Preview Mode) BOTTOM BRANDING STRIP (A4 red bar bottom edge) */}
-                          <div className="print:hidden mt-14 relative overflow-visible -mx-[2.54cm]">
+                          <div className="print:hidden mt-14 relative overflow-visible -mx-[1.27cm]">
                             {renderFooterStripping()}
                           </div>
 
@@ -1204,7 +1204,7 @@ export default function QuotationLetterCreator({ selectedMonth = 'all' }: Quotat
                   <tfoot>
                     <tr className="border-none m-0 p-0">
                       <td className="p-0 border-none m-0">
-                        <div className="hidden print:block h-[25mm] w-full" />
+                        <div className="hidden print:block h-[15mm] w-full" />
                       </td>
                     </tr>
                   </tfoot>

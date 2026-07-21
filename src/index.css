@@ -95,16 +95,6 @@
       border: none !important;
       box-shadow: none !important;
       z-index: 99999 !important;
-    }
-
-    #print-section {
-      padding-top: 2cm !important;
-      padding-bottom: 0.25cm !important;
-      padding-left: 2.54cm !important;
-      padding-right: 2.54cm !important;
-    }
-
-    #print-section-spj {
       padding-top: 1.27cm !important;
       padding-bottom: 1.27cm !important;
       padding-left: 1.27cm !important;
